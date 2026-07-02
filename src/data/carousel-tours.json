@@ -1,0 +1,58 @@
+[
+  {
+    "id": "103-west-v04",
+    "name": "103 WEST V04",
+    "thumbnail": "/tour-thumbs/103-west-v04.jpg",
+    "city": "Kolkata",
+    "mediaType": "virtual-tour"
+  },
+  {
+    "id": "3rd-tataeast-v5-nsv",
+    "name": "3rd TataEast V5",
+    "thumbnail": "/tour-thumbs/3rd-tataeast-v5-nsv.jpg",
+    "city": "Kolkata",
+    "mediaType": "virtual-tour"
+  },
+  {
+    "id": "aarnika-infra-nsv-hyderabad",
+    "name": "Aarnika Infra NSV Hyderabad",
+    "thumbnail": "/tour-thumbs/aarnika-infra-nsv-hyderabad.jpg",
+    "city": "Hyderabad",
+    "mediaType": "virtual-tour"
+  },
+  {
+    "id": "ace-divino-ns-ventures",
+    "name": "Ace Divino",
+    "thumbnail": "/tour-thumbs/ace-divino-ns-ventures.jpg",
+    "city": "Unknown",
+    "mediaType": "virtual-tour"
+  },
+  {
+    "id": "ambience-catriona-ns-ventures",
+    "name": "Ambience Catriona",
+    "thumbnail": "/tour-thumbs/ambience-catriona-ns-ventures.jpg",
+    "city": "Gurgaon",
+    "mediaType": "virtual-tour"
+  },
+  {
+    "id": "ambience-catriona-2-ns-ventures",
+    "name": "Ambience Catriona 2",
+    "thumbnail": "/tour-thumbs/ambience-catriona-2-ns-ventures.jpg",
+    "city": "Gurgaon",
+    "mediaType": "virtual-tour"
+  },
+  {
+    "id": "ambience-tiverton-2-ns-ventures",
+    "name": "Ambience Tiverton 2",
+    "thumbnail": "/tour-thumbs/ambience-tiverton-2-ns-ventures.jpg",
+    "city": "Noida",
+    "mediaType": "virtual-tour"
+  },
+  {
+    "id": "amtek-noida-v6-nsv",
+    "name": "Amtek Noida V6",
+    "thumbnail": "/tour-thumbs/amtek-noida-v6-nsv.jpg",
+    "city": "Noida",
+    "mediaType": "virtual-tour"
+  }
+]
