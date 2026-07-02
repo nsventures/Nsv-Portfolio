@@ -1,73 +1,47 @@
-# React + TypeScript + Vite
+# NS Ventures Portfolio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Marketing website and admin CMS for NS Ventures — property marketing films, drone cinematography, and 360° virtual tours.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Public portfolio with video and VR tour grid, state filters, infinite scroll
+- Email + WhatsApp OTP gate before viewing portfolio media
+- Callback request form (email + lead capture)
+- Admin panel: tours, cities, bulk CSV/Excel import
+- Supabase backend (Postgres, Auth, Storage, Edge Functions)
+- Hosted on Vercel
 
-## React Compiler
+## Quick start (local)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+cp .env.example .env.local
+# Fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+npm run dev:all   # site + bulk-import/WhatsApp relay
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- Public site: http://localhost:5173
+- Admin: http://localhost:5173/admin/login
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+See [supabase/README.md](supabase/README.md) for database, edge functions, and admin user setup.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Documentation
+
+**[Full project documentation → docs/DOCUMENTATION.md](docs/DOCUMENTATION.md)**
+
+Covers architecture, data flows, OTP gate, admin CMS, Supabase schema, environment variables, deployment (Vercel + Supabase), and troubleshooting.
+
+## Deploy
+
+| Platform | What runs there |
+|----------|-----------------|
+| **Vercel** | React SPA + `/api/authyo/send-otp` WhatsApp relay |
+| **Supabase** | Database, auth, storage, edge functions |
+| **Railway/Render** (optional) | Bulk import server with Playwright |
+
+Build: `npm run build` → output `dist/`
+
+## Tech stack
+
+React 19 · TypeScript · Vite · Tailwind CSS 4 · Supabase · Resend · Authyo · Vercel
