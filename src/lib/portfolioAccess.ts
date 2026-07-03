@@ -1,7 +1,7 @@
 const STORAGE_KEY = 'nsv-portfolio-access-v3'
 
-/** 30 days — must match server ACCESS_TTL_SECONDS. */
-export const PORTFOLIO_ACCESS_TTL_MS = 30 * 24 * 60 * 60 * 1000
+/** 24 hours — must match server ACCESS_TTL_SECONDS. */
+export const PORTFOLIO_ACCESS_TTL_MS = 24 * 60 * 60 * 1000
 
 export interface PortfolioAccessInfo {
   name: string

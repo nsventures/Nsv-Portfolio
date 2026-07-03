@@ -1,7 +1,7 @@
 import { normalizeEmail } from './portfolio-otp.ts'
 
-/** 30 days — matches client-side device memory (Option B). */
-export const ACCESS_TTL_SECONDS = 30 * 24 * 60 * 60
+/** 24 hours — matches client-side device memory. */
+export const ACCESS_TTL_SECONDS = 24 * 60 * 60
 
 export interface AccessTokenClaims {
   email: string

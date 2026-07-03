@@ -57,16 +57,57 @@ export function Portfolio() {
     [stateCounts],
   )
 
+  const statesWithContent = useMemo(
+    () => INDIAN_STATES.filter((state) => (stateCounts[state] ?? 0) > 0),
+    [stateCounts],
+  )
+
   const stateOptions = useMemo(
     () => [
       { value: '', label: 'All states', count: totalItemCount },
-      ...INDIAN_STATES.map((state) => ({
+      ...statesWithContent.map((state) => ({
         value: state,
         label: state,
         count: stateCounts[state] ?? 0,
       })),
     ],
-    [stateCounts, totalItemCount],
+    [stateCounts, statesWithContent, totalItemCount],
+  )
+
+  const stateSearchEmptyMessage = useCallback(
+    (query: string) => {
+      const normalized = query.trim().toLowerCase()
+      if (!normalized) {
+        return mediaFilter === 'video'
+          ? 'No states with videos yet.'
+          : 'No states with virtual tours yet.'
+      }
+
+      const matchingStates = INDIAN_STATES.filter((state) =>
+        state.toLowerCase().includes(normalized),
+      )
+
+      if (matchingStates.length === 0) {
+        return 'No state found with that name.'
+      }
+
+      const withContent = matchingStates.filter((state) => (stateCounts[state] ?? 0) > 0)
+      if (withContent.length > 0) {
+        return 'No states found.'
+      }
+
+      if (matchingStates.length === 1) {
+        const state = matchingStates[0]
+        return mediaFilter === 'video'
+          ? `No videos in ${state} yet.`
+          : `No virtual tours in ${state} yet.`
+      }
+
+      return mediaFilter === 'video'
+        ? 'No videos in the matching states yet.'
+        : 'No virtual tours in the matching states yet.'
+    },
+    [mediaFilter, stateCounts],
   )
 
   useEffect(() => {
@@ -115,6 +156,7 @@ export function Portfolio() {
                 disabled={loading}
                 placeholder="Select state"
                 searchPlaceholder="Search states…"
+                emptySearchMessage={stateSearchEmptyMessage}
                 onChange={(value) => setActiveState(value || null)}
                 className="w-full max-w-xs"
             />

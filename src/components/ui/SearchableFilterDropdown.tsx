@@ -18,6 +18,8 @@ interface SearchableFilterDropdownProps {
   searchPlaceholder?: string
   className?: string
   onChange: (value: string) => void
+  /** Shown when search has no selectable matches. String or derived from the query. */
+  emptySearchMessage?: string | ((query: string) => string)
 }
 
 function ChevronIcon({ open }: { open: boolean }) {
@@ -74,6 +76,7 @@ export function SearchableFilterDropdown({
   searchPlaceholder = 'Search…',
   className,
   onChange,
+  emptySearchMessage,
 }: SearchableFilterDropdownProps) {
   const listId = useId()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -135,6 +138,11 @@ export function SearchableFilterDropdown({
     if (!normalized) return options
     return options.filter((option) => option.label.toLowerCase().includes(normalized))
   }, [options, query])
+
+  const resolvedEmptySearchMessage =
+    typeof emptySearchMessage === 'function'
+      ? emptySearchMessage(query)
+      : emptySearchMessage ?? 'No matches found.'
 
   const handleSelect = (nextValue: string) => {
     onChange(nextValue)
@@ -228,7 +236,7 @@ export function SearchableFilterDropdown({
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1.5 [scrollbar-color:rgba(0,45,84,0.25)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-navy/25 [&::-webkit-scrollbar-track]:bg-transparent"
           >
             {filtered.length === 0 ? (
-              <li className="px-4 py-6 text-center text-sm text-slate-light">No matches found.</li>
+              <li className="px-4 py-6 text-center text-sm text-slate-light">{resolvedEmptySearchMessage}</li>
             ) : (
               filtered.map((option) => {
                 const isSelected = option.value === value
