@@ -399,3 +399,16 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+body.site-protection-enabled {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+body.site-protection-enabled input,
+body.site-protection-enabled textarea,
+body.site-protection-enabled select,
+body.site-protection-enabled [contenteditable='true'] {
+  -webkit-user-select: text;
+  user-select: text;
+}

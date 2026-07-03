@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom'
 
+import { AdminProductionGate } from './admin/components/AdminProductionGate'
 import PublicApp from './PublicApp'
 
 const AdminApp = lazy(() => import('./admin/AdminApp'))
@@ -26,7 +27,9 @@ export default function Root() {
                 </div>
               }
             >
-              <AdminApp />
+              <AdminProductionGate>
+                <AdminApp />
+              </AdminProductionGate>
             </Suspense>
           }
         />

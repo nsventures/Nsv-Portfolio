@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 
 import { PortfolioAccessProvider } from './context/PortfolioAccessContext'
+import { useSiteProtection } from './hooks/useSiteProtection'
 import { Navbar } from './components/layout/Navbar'
 import { Hero } from './components/sections/Hero'
 import { useLenis } from './hooks/useLenis'
@@ -62,6 +63,7 @@ function DeferredCursorFollower() {
 
 export default function PublicApp() {
   useLenis()
+  useSiteProtection()
 
   const [inquiryOpen, setInquiryOpen] = useState(false)
   const [callbackOpen, setCallbackOpen] = useState(false)

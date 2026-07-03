@@ -111,19 +111,21 @@ export function PortfolioCallbackModal({
         data-lenis-prevent
         role="dialog"
         aria-modal="true"
-        aria-labelledby="portfolio-callback-title"
+        aria-labelledby={sent ? 'portfolio-callback-success-title' : 'portfolio-callback-title'}
       >
-        <div className="portfolio-access-gate-header px-6 py-5 sm:px-7">
-          <Logo size="sm" className="h-8 sm:h-9" />
-          <h2 id="portfolio-callback-title" className="mt-3 font-display text-xl font-bold text-white">
-            We&apos;ll Call You Back
-          </h2>
-          <p className="mt-1 text-sm text-white/75">
-            Leave your details and our team will reach out shortly.
-          </p>
-        </div>
+        {!sent && (
+          <div className="portfolio-access-gate-header px-6 py-5 sm:px-7">
+            <Logo size="sm" className="h-8 sm:h-9" />
+            <h2 id="portfolio-callback-title" className="mt-3 font-display text-xl font-bold text-white">
+              We&apos;ll Call You Back
+            </h2>
+            <p className="mt-1 text-sm text-white/75">
+              Leave your details and our team will reach out shortly.
+            </p>
+          </div>
+        )}
 
-        <div className="px-6 py-6 sm:px-7 sm:py-7">
+        <div className={cn('px-6 py-6 sm:px-7', sent && 'sm:py-8')}>
           {sent ? (
             <div className="text-center py-4">
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
@@ -137,14 +139,16 @@ export function PortfolioCallbackModal({
                   />
                 </svg>
               </div>
-              <p className="font-medium text-navy">Request Received</p>
-              <p className="mt-2 text-sm text-slate">
+              <p id="portfolio-callback-success-title" className="text-lg font-semibold text-navy">
+                Request Received
+              </p>
+              <p className="mt-2 text-base text-slate">
                 Our team will reach out to you shortly.
               </p>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-6 w-full rounded-xl bg-navy py-3 text-sm font-semibold text-white hover:bg-navy-light transition-colors"
+                className="mt-6 w-full rounded-xl bg-navy py-3.5 text-base font-semibold text-white hover:bg-navy-light transition-colors"
               >
                 Done
               </button>
