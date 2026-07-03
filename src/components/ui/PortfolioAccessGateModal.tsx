@@ -360,8 +360,7 @@ export function PortfolioAccessGateModal({
             )}
 
             <p className="mt-6 text-center text-[11px] leading-relaxed text-slate-light">
-              We use your details to verify access and share portfolio updates.
-            </p>
+            We use your details to verify access and show portfolio</p>
           </div>
         </div>
       </div>,
