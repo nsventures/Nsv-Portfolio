@@ -6,9 +6,12 @@ import {
 } from '../../api/portfolioOtp'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { savePortfolioAccess } from '../../lib/portfolioAccess'
+import { DEFAULT_PHONE_COUNTRY, findPhoneCountry } from '../../data/phoneCountries'
+import { toE164, validateNationalNumber } from '../../lib/phone'
 import { cn } from '../../lib/utils'
 import { Logo } from './Logo'
 import { OtpInput } from './OtpInput'
+import { PhoneInput } from './PhoneInput'
 
 interface PortfolioAccessGateModalProps {
   pendingProjectName?: string | null
@@ -20,6 +23,7 @@ type Step = 'details' | 'otp'
 interface FormState {
   name: string
   email: string
+  countryCode: string
   phone: string
 }
 
@@ -38,11 +42,9 @@ function validateDetails(data: FormState): FormErrors {
   else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
     errors.email = 'Enter a valid email'
   }
-  const digits = data.phone.replace(/\D/g, '')
-  if (!digits) errors.phone = 'Phone number is required'
-  else if (digits.length !== 10 && !(digits.length === 12 && digits.startsWith('91'))) {
-    errors.phone = 'Enter a valid 10-digit mobile number'
-  }
+  const country = findPhoneCountry(data.countryCode)
+  const phoneError = validateNationalNumber(country, data.phone)
+  if (phoneError) errors.phone = phoneError
   return errors
 }
 
@@ -51,7 +53,12 @@ export function PortfolioAccessGateModal({
   onValidated,
 }: PortfolioAccessGateModalProps) {
   const [step, setStep] = useState<Step>('details')
-  const [data, setData] = useState<FormState>({ name: '', email: '', phone: '' })
+  const [data, setData] = useState<FormState>({
+    name: '',
+    email: '',
+    countryCode: DEFAULT_PHONE_COUNTRY.code,
+    phone: '',
+  })
   const [otp, setOtp] = useState('')
   const [emailMasked, setEmailMasked] = useState('')
   const [phoneMasked, setPhoneMasked] = useState('')
@@ -71,7 +78,7 @@ export function PortfolioAccessGateModal({
     return () => window.clearTimeout(timer)
   }, [resendIn])
 
-  const update = (key: keyof FormState, value: string) => {
+  const update = (key: 'name' | 'email' | 'phone', value: string) => {
     setData((prev) => ({ ...prev, [key]: value }))
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined, submit: undefined }))
   }
@@ -97,7 +104,7 @@ export function PortfolioAccessGateModal({
       const result = await sendPortfolioEmailOtp({
         name: data.name,
         email: data.email,
-        phone: data.phone,
+        phone: toE164(findPhoneCountry(data.countryCode), data.phone),
         projectName: pendingProjectName,
       })
       setEmailMasked(result.emailMasked)
@@ -191,7 +198,7 @@ export function PortfolioAccessGateModal({
               id="portfolio-access-title"
               className="mt-3 font-display text-xl sm:text-2xl font-bold text-white"
             >
-              {step === 'otp' ? 'Check your email & WhatsApp' : 'View our work'}
+              {step === 'otp' ? 'Check Your Email & WhatsApp' : 'View Our Work'}
             </h2>
             <p className="mt-1.5 text-sm text-white/75 leading-relaxed">
               {step === 'otp' ? (
@@ -211,7 +218,7 @@ export function PortfolioAccessGateModal({
                     <span className="mt-1 block text-white/60">
                       {whatsappError?.toLowerCase().includes('invalid end point') ||
                       whatsappError?.toLowerCase().includes('invalid endpoint')
-                        ? 'WhatsApp failed — set AUTHYO_AUTHORIZED_ENDPOINT=http://localhost:5173 in .env.local and Authyo dashboard, then run npm run dev:all.'
+                        ? 'WhatsApp failed — Authyo Client ID/Secret must match the app with your authorized endpoints saved. Check Authyo → Application → SDK, update .env.local, run npm run test:authyo.'
                         : whatsappError?.includes('relay')
                           ? 'WhatsApp relay offline — run npm run dev:all (needs import server on :3001).'
                           : whatsappError ?? 'WhatsApp delivery failed — use the code from your email.'}
@@ -263,15 +270,19 @@ export function PortfolioAccessGateModal({
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">
                     Phone
                   </label>
-                  <input
-                    type="tel"
-                    value={data.phone}
-                    onChange={(e) => update('phone', e.target.value)}
-                    placeholder="+91 98765 43210"
-                    autoComplete="tel"
-                    className={inputClass(!!errors.phone)}
+                  <PhoneInput
+                    countryCode={data.countryCode}
+                    nationalNumber={data.phone}
+                    onCountryChange={(countryCode) => {
+                      setData((prev) => ({ ...prev, countryCode }))
+                      if (errors.phone) {
+                        setErrors((prev) => ({ ...prev, phone: undefined, submit: undefined }))
+                      }
+                    }}
+                    onNationalNumberChange={(phone) => update('phone', phone)}
+                    error={errors.phone}
+                    disabled={submitting}
                   />
-                  {errors.phone && <p className="mt-1 text-xs text-red-500">{errors.phone}</p>}
                 </div>
 
                 {errors.submit && (
@@ -285,14 +296,14 @@ export function PortfolioAccessGateModal({
                   disabled={submitting}
                   className="mt-1 w-full rounded-xl bg-navy py-3 text-sm font-semibold text-white shadow-lg shadow-navy/15 hover:bg-navy-light transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Sending code…' : 'Send verification code'}
+                  {submitting ? 'Sending Code…' : 'Send Verification Code'}
                 </button>
               </form>
             ) : (
               <form onSubmit={handleOtpSubmit} className="space-y-5">
                 <div>
                   <label className="mb-3 block text-center text-xs font-semibold uppercase tracking-wide text-slate">
-                    Enter verification code
+                    Enter Verification Code
                   </label>
                   <OtpInput
                     value={otp}
@@ -321,7 +332,7 @@ export function PortfolioAccessGateModal({
                   disabled={submitting || otp.length < 6}
                   className="w-full rounded-xl bg-navy py-3 text-sm font-semibold text-white shadow-lg shadow-navy/15 hover:bg-navy-light transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Verifying…' : 'Verify & continue'}
+                  {submitting ? 'Verifying…' : 'Verify & Continue'}
                 </button>
 
                 <div className="flex items-center justify-between gap-3 text-xs">
@@ -342,7 +353,7 @@ export function PortfolioAccessGateModal({
                     onClick={() => void sendOtp()}
                     className="font-medium text-cyan hover:underline disabled:opacity-50 disabled:no-underline"
                   >
-                    {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+                    {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend Code…'}
                   </button>
                 </div>
               </form>

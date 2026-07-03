@@ -188,10 +188,15 @@ export async function sendAuthyoWhatsappOtp(opts) {
     }
   }
 
+  const endpointRejected = String(lastError).toLowerCase().includes('invalid end point')
+
   return {
     ok: false,
-    error: `${lastError} (tried origins: ${origins.join(', ') || 'none'})`,
+    error: endpointRejected
+      ? 'Authyo rejected this app (invalid endpoint). Copy Client ID and Client Secret from the same Authyo application that has your site URL saved under Authorized endpoints, update .env.local / Vercel, then click Save in Authyo.'
+      : `${lastError} (tried origins: ${origins.join(', ') || 'none'})`,
     method: 'GET',
     origin: lastOrigin,
+    endpointRejected,
   }
 }

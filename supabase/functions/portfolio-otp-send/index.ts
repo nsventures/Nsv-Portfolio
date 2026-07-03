@@ -9,7 +9,7 @@ import {
   maskEmail,
   maskPhone,
   normalizeEmail,
-  normalizeIndianPhone,
+  normalizePhoneE164,
   sendEmailOtp,
 } from '../_shared/portfolio-otp.ts'
 import { createWhatsappDispatchToken } from '../_shared/whatsapp-dispatch.ts'
@@ -39,12 +39,12 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as SendBody
     const name = body.name?.trim() ?? ''
     const email = normalizeEmail(body.email ?? '')
-    const phoneE164 = normalizeIndianPhone(body.phone ?? '')
+    const phoneE164 = normalizePhoneE164(body.phone ?? '')
     const projectName = body.projectName?.trim() || null
 
     if (!name) return errorResponse('Name is required')
     if (!email || !isValidEmail(email)) return errorResponse('A valid email is required')
-    if (!phoneE164) return errorResponse('Enter a valid 10-digit Indian mobile number')
+    if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
 
     const supabase = createServiceClient()
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString()

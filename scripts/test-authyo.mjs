@@ -49,8 +49,13 @@ if (result.ok) {
 }
 
 console.error(`✗ Failed: ${result.error}`)
-console.error('\nChecklist:')
-console.error('  1. Authyo → Application → Authorized endpoint = http://localhost:5173')
-console.error('  2. .env.local has AUTHYO_CLIENT_ID + AUTHYO_CLIENT_SECRET from THAT app')
-console.error('  3. npm run dev:all (relay on :3001) when testing in the browser')
+console.error('\nThis usually means Client ID / Secret do not match the Authyo app.')
+console.error('Checklist:')
+console.error('  1. Authyo → Application → open "Ns Ventures Portfolio" (your app)')
+console.error('  2. SDK tab → copy Client ID + Client Secret into .env.local AND Vercel')
+console.error('  3. Application tab → Authorized endpoints must include http://localhost:5173')
+console.error('     Use full URLs (https://portfolio.nsventures.in not portfolio.nsventures.in)')
+console.error('  4. Click Next / Save — unsaved endpoints will not work')
+console.error('  5. npm run dev:all when testing locally (relay on :3001)')
+console.error(`\nCurrent clientId prefix: ${clientId.slice(0, 8)}…`)
 process.exit(1)

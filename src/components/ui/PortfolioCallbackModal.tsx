@@ -190,7 +190,7 @@ export function PortfolioCallbackModal({
                 disabled={submitting}
                 className="w-full rounded-xl bg-navy py-3 text-sm font-semibold text-white shadow-lg shadow-navy/15 hover:bg-navy-light transition-colors disabled:opacity-50"
               >
-                {submitting ? 'Sending…' : 'Request callback'}
+                {submitting ? 'Sending…' : 'Request Callback'}
               </button>
               <button
                 type="button"

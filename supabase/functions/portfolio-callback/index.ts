@@ -5,7 +5,7 @@ import {
   isValidEmail,
   jsonResponse,
   normalizeEmail,
-  normalizeIndianPhone,
+  normalizePhoneE164,
   sendCallbackRequestEmail,
 } from '../_shared/portfolio-otp.ts'
 
@@ -30,13 +30,13 @@ Deno.serve(async (req) => {
     const body = (await req.json()) as CallbackBody
     const name = body.name?.trim() ?? ''
     const email = normalizeEmail(body.email ?? '')
-    const phoneE164 = normalizeIndianPhone(body.phone ?? '')
+    const phoneE164 = normalizePhoneE164(body.phone ?? '')
     const message = body.message?.trim() || null
     const projectName = body.projectName?.trim() || null
 
     if (!name) return errorResponse('Name is required')
     if (!email || !isValidEmail(email)) return errorResponse('A valid email is required')
-    if (!phoneE164) return errorResponse('Enter a valid 10-digit mobile number')
+    if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
 
     await sendCallbackRequestEmail({
       name,

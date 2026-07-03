@@ -25,6 +25,20 @@ export function normalizeIndianPhone(raw: string): string | null {
   return null
 }
 
+/** Normalize phone to E.164 (+country + national). Accepts +prefix or legacy Indian formats. */
+export function normalizePhoneE164(raw: string): string | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+
+  if (trimmed.startsWith('+')) {
+    const digits = trimmed.replace(/\D/g, '')
+    if (digits.length >= 8 && digits.length <= 15) return `+${digits}`
+    return null
+  }
+
+  return normalizeIndianPhone(trimmed)
+}
+
 export function normalizeEmail(raw: string): string {
   return raw.trim().toLowerCase()
 }
@@ -60,7 +74,7 @@ export function maskEmail(email: string): string {
   return `${visible}***@${domain}`
 }
 
-/** Mask E.164 Indian numbers for UI, e.g. +91 75***77 */
+/** Mask E.164 numbers for UI, e.g. +91 75***77 */
 export function maskPhone(phoneE164: string): string {
   const digits = phoneE164.replace(/\D/g, '')
   if (digits.length >= 12 && digits.startsWith('91')) {
@@ -68,6 +82,11 @@ export function maskPhone(phoneE164: string): string {
     if (local.length === 10) {
       return `+91 ${local.slice(0, 2)}***${local.slice(-2)}`
     }
+  }
+  if (digits.length >= 8) {
+    const visibleStart = digits.slice(0, Math.min(5, digits.length - 4))
+    const visibleEnd = digits.slice(-2)
+    return `+${visibleStart}***${visibleEnd}`
   }
   return phoneE164
 }
