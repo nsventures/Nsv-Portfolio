@@ -336,17 +336,6 @@ export function PortfolioAccessGateModal({
                 </button>
 
                 <div className="flex items-center justify-between gap-3 text-xs">
-                  {/* <button
-                    type="button"
-                    onClick={() => {
-                      setStep('details')
-                      setOtp('')
-                      setErrors({})
-                    }}
-                    className="text-slate hover:text-navy transition-colors"
-                  >
-                    ← Edit details
-                  </button> */}
                   <button
                     type="button"
                     disabled={submitting || resendIn > 0}
