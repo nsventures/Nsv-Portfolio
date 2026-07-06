@@ -200,7 +200,7 @@ export function PortfolioCallbackModal({
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">
+                <label className="mb-1.5 block text-xs  font-semibold uppercase tracking-wide text-slate">
                   Message <span className="font-normal normal-case text-slate-light">(optional)</span>
                 </label>
                 <textarea

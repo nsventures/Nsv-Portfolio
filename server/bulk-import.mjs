@@ -6,6 +6,10 @@ import { portfolioIdFromUrl, resolveMediaTypeFromLink, slugFromUrl } from '../sc
 import { fetchYoutubeThumbnailBuffer } from '../scripts/lib/youtube-screenshot.mjs'
 import { fetchYoutubeMetadata } from '../scripts/lib/youtube-metadata.mjs'
 import { launchTourBrowser, screenshotTourToBuffer } from '../scripts/lib/tour-screenshot.mjs'
+import {
+  compressThumbnailBuffer,
+  thumbStoragePath,
+} from '../scripts/lib/compress-thumbnail.mjs'
 
 const PORT = Number(process.env.IMPORT_PORT ?? process.env.PORT ?? 3001)
 
@@ -80,13 +84,16 @@ function idFromLink(link, mediaType) {
 }
 
 async function captureThumbnail(page, link, mediaType) {
+  let buffer
   if (mediaType === 'video') {
-    return fetchYoutubeThumbnailBuffer(link)
+    buffer = await fetchYoutubeThumbnailBuffer(link)
+  } else {
+    if (!page) {
+      throw new Error('Browser not available for virtual tour thumbnail')
+    }
+    buffer = await screenshotTourToBuffer(page, link)
   }
-  if (!page) {
-    throw new Error('Browser not available for virtual tour thumbnail')
-  }
-  return screenshotTourToBuffer(page, link)
+  return compressThumbnailBuffer(buffer)
 }
 
 function thumbnailCaptureStatus(mediaType) {
@@ -364,12 +371,12 @@ async function processBulkImport(req, res) {
         const tourPage =
           resolvedMediaType === 'video' ? null : await ensureTourBrowser()
         const buffer = await captureThumbnail(tourPage, link, resolvedMediaType)
-        thumbnailPath = `${tourId}.jpg`
+        thumbnailPath = thumbStoragePath(tourId)
         const { error: uploadError } = await adminClient.storage
           .from('tour-thumbs')
           .upload(thumbnailPath, buffer, {
             upsert: true,
-            contentType: 'image/jpeg',
+            contentType: 'image/webp',
           })
         if (uploadError) throw new Error(uploadError.message)
       } catch (err) {

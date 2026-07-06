@@ -1,4 +1,6 @@
 import { slugify } from '../../lib/utils'
+import { compressThumbnailFile } from '../../lib/compressThumbnail'
+import { thumbStoragePath } from '../../lib/portfolioMedia'
 import { getSupabase } from '../../lib/supabase'
 import { canonicalCityName } from '../lib/cityNames'
 import type {
@@ -158,12 +160,12 @@ export async function uploadTourThumbnail(
   previousPath?: string | null,
 ): Promise<string> {
   const supabase = getSupabase()
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-  const path = `${id}.${ext}`
+  const compressed = await compressThumbnailFile(file, thumbStoragePath(id))
+  const path = thumbStoragePath(id)
 
-  const { error } = await supabase.storage.from('tour-thumbs').upload(path, file, {
+  const { error } = await supabase.storage.from('tour-thumbs').upload(path, compressed, {
     upsert: true,
-    contentType: file.type || 'image/jpeg',
+    contentType: 'image/webp',
   })
 
   if (error) throw new Error(error.message)
@@ -281,16 +283,16 @@ export async function duplicateTour(id: string): Promise<string> {
   let thumbnailPath: string | null = null
   if (tour.thumbnail_path) {
     const normalized = tour.thumbnail_path.replace(/^\/+/, '').replace(/^tour-thumbs\//, '')
-    const ext = normalized.split('.').pop() || 'jpg'
-    const newPath = `${newId}.${ext}`
+    const newPath = thumbStoragePath(newId)
     const { data: blob, error: dlError } = await supabase.storage
       .from('tour-thumbs')
       .download(normalized)
 
     if (blob && !dlError) {
+      const compressed = await compressThumbnailFile(blob, newPath)
       const { error: upError } = await supabase.storage
         .from('tour-thumbs')
-        .upload(newPath, blob, { upsert: true })
+        .upload(newPath, compressed, { upsert: true, contentType: 'image/webp' })
       if (!upError) thumbnailPath = newPath
     }
   }

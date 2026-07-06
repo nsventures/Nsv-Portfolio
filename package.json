@@ -14,6 +14,8 @@
     "delete:vr-tours": "node --env-file=.env.local scripts/delete-all-vr-tours.mjs",
     "test:authyo": "node --env-file=.env.local scripts/test-authyo.mjs",
     "backfill:youtube-dates": "node --env-file=.env.local scripts/backfill-youtube-dates.mjs",
+    "compress:thumbnails": "node --env-file=.env.local scripts/compress-thumbnails.mjs",
+    "compress:thumbnails:dry": "node --env-file=.env.local scripts/compress-thumbnails.mjs --dry-run",
     "delete:orphan-thumbs": "node --env-file=.env.local scripts/delete-all-videos.mjs --orphans-only",
     "dev:import": "node --env-file=.env.local server/bulk-import.mjs",
     "start:import": "node server/bulk-import.mjs",
@@ -51,6 +53,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
     "playwright": "^1.52.0",
+    "sharp": "^0.35.3",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12"

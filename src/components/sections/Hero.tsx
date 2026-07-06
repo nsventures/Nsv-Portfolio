@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
-import { HERO_VIDEO, HERO_POSTER } from '../../constants/hero'
+import { HERO_MOBILE_VIDEO, HERO_POSTER, HERO_VIDEO } from '../../constants/hero'
 import { MagneticButton } from '../ui/Motion'
 import { scrollToPortfolioFilter, parseMediaFilter } from '../../lib/portfolioNav'
 import type { PortfolioMediaType } from '../../types/portfolio'
@@ -20,8 +20,10 @@ const fadeUp = {
 
 export function Hero() {
   const sectionRef = useRef<HTMLElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [videoReady, setVideoReady] = useState(false)
+  const mobileVideoRef = useRef<HTMLVideoElement>(null)
+  const desktopVideoRef = useRef<HTMLVideoElement>(null)
+  const [mobileVideoReady, setMobileVideoReady] = useState(false)
+  const [desktopVideoReady, setDesktopVideoReady] = useState(false)
   const [activeTab, setActiveTab] = useState<PortfolioMediaType>(() =>
     parseMediaFilter(window.location.hash),
   )
@@ -41,30 +43,45 @@ export function Hero() {
 
   useEffect(() => {
     const section = sectionRef.current
-    const video = videoRef.current
-    if (!section || !video) return
+    if (!section) return
 
-    const loadVideo = () => {
-      video.play().catch(() => {})
+    const mq = window.matchMedia('(max-width: 767px)')
+
+    const getActiveVideo = () =>
+      mq.matches ? mobileVideoRef.current : desktopVideoRef.current
+
+    const playActiveVideo = () => {
+      mobileVideoRef.current?.pause()
+      desktopVideoRef.current?.pause()
+      getActiveVideo()?.play().catch(() => {})
     }
 
-    const onLoadedData = () => loadVideo()
-    if (video.readyState >= 2) {
-      loadVideo()
-    } else {
-      video.addEventListener('loadeddata', onLoadedData, { once: true })
-    }
+    const onLoadedData = () => playActiveVideo()
+    const mobileVideo = mobileVideoRef.current
+    const desktopVideo = desktopVideoRef.current
+
+    if (mobileVideo?.readyState && mobileVideo.readyState >= 2) playActiveVideo()
+    else mobileVideo?.addEventListener('loadeddata', onLoadedData, { once: true })
+
+    if (desktopVideo?.readyState && desktopVideo.readyState >= 2) playActiveVideo()
+    else desktopVideo?.addEventListener('loadeddata', onLoadedData, { once: true })
+
+    const onViewportChange = () => playActiveVideo()
+    mq.addEventListener('change', onViewportChange)
 
     const setupScroll = () => {
-      gsap.to(video, {
-        scale: 1.08,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: section,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: true,
-        },
+      const targets = [mobileVideoRef.current, desktopVideoRef.current].filter(Boolean)
+      targets.forEach((video) => {
+        gsap.to(video, {
+          scale: 1.08,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: section,
+            start: 'top top',
+            end: 'bottom top',
+            scrub: true,
+          },
+        })
       })
     }
 
@@ -74,7 +91,9 @@ export function Hero() {
         : window.setTimeout(setupScroll, 1200)
 
     return () => {
-      video.removeEventListener('loadeddata', onLoadedData)
+      mobileVideo?.removeEventListener('loadeddata', onLoadedData)
+      desktopVideo?.removeEventListener('loadeddata', onLoadedData)
+      mq.removeEventListener('change', onViewportChange)
       if (typeof cancelIdleCallback !== 'undefined' && typeof scrollId === 'number') {
         cancelIdleCallback(scrollId)
       } else {
@@ -103,10 +122,10 @@ export function Hero() {
       aria-label="Hero"
     >
       <video
-        ref={videoRef}
-        src={HERO_VIDEO}
-        className={`absolute inset-0 w-full h-full object-cover brightness-[0.45] transition-opacity duration-700 ${
-          videoReady ? 'opacity-100' : 'opacity-0'
+        ref={mobileVideoRef}
+        src={HERO_MOBILE_VIDEO}
+        className={`absolute inset-0 h-full w-full object-cover brightness-[0.45] transition-opacity duration-700 md:hidden ${
+          mobileVideoReady ? 'opacity-100' : 'opacity-0'
         }`}
         poster={HERO_POSTER}
         muted
@@ -114,8 +133,23 @@ export function Hero() {
         playsInline
         preload="metadata"
         aria-hidden
-        onCanPlay={() => setVideoReady(true)}
-        onError={() => setVideoReady(false)}
+        onCanPlay={() => setMobileVideoReady(true)}
+        onError={() => setMobileVideoReady(false)}
+      />
+      <video
+        ref={desktopVideoRef}
+        src={HERO_VIDEO}
+        className={`absolute inset-0 hidden h-full w-full object-cover brightness-[0.45] transition-opacity duration-700 md:block ${
+          desktopVideoReady ? 'opacity-100' : 'opacity-0'
+        }`}
+        poster={HERO_POSTER}
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-hidden
+        onCanPlay={() => setDesktopVideoReady(true)}
+        onError={() => setDesktopVideoReady(false)}
       />
 
       <div className="absolute inset-0 bg-gradient-to-r from-navy/90 from-0% via-navy/55 via-45% to-navy/15 to-100% pointer-events-none" />
