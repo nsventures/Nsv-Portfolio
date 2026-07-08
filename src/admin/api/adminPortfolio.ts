@@ -133,10 +133,22 @@ export async function fetchPortfolioStats(): Promise<PortfolioStats> {
 
 export async function createTour(
   item: Omit<PortfolioItemRow, 'created_at' | 'updated_at' | 'cities'>,
-): Promise<void> {
+): Promise<string> {
   const supabase = getSupabase()
-  const { error } = await supabase.from('portfolio_items').insert(item)
-  if (error) throw new Error(error.message)
+  const baseId = slugify(item.id.trim()) || 'tour'
+  const id = await uniqueTourId(baseId)
+
+  const { error } = await supabase.from('portfolio_items').insert({ ...item, id })
+  if (error) {
+    if (error.message.includes('portfolio_items_pkey') || error.code === '23505') {
+      throw new Error(
+        `A tour with ID "${id}" already exists. Change the URL slug or edit the existing item.`,
+      )
+    }
+    throw new Error(error.message)
+  }
+
+  return id
 }
 
 export async function updateTour(
