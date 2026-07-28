@@ -54,6 +54,14 @@ function SearchIcon() {
   )
 }
 
+function FilterIcon({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path d="M2.5 4.5A1 1 0 013.5 3.5h13a1 1 0 01.78 1.62l-4.78 6v4.38a1 1 0 01-.45.83l-2.5 1.67a1 1 0 01-1.55-.83v-6.05l-4.78-6a1 1 0 01-.22-.62z" />
+    </svg>
+  )
+}
+
 function CheckIcon() {
   return (
     <svg aria-hidden viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-cyan">
@@ -175,17 +183,23 @@ export function SearchableFilterDropdown({
           if (open) setQuery('')
         }}
         className={cn(
-          'group flex w-full items-center justify-between gap-2 rounded-lg border bg-white px-3 py-2 text-left shadow-sm shadow-navy/[0.03] transition-all duration-200',
+          'group flex w-full items-center justify-between gap-2 rounded-full border-2 bg-white px-4 py-2.5 text-left shadow-md shadow-cyan/10 transition-all duration-200',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan/30',
           disabled
-            ? 'cursor-not-allowed border-border/80 opacity-60'
+            ? 'cursor-not-allowed border-border/80 opacity-60 shadow-none'
             : open
-              ? 'border-cyan ring-2 ring-cyan/15'
-              : 'border-border hover:border-cyan/40 hover:shadow-md hover:shadow-navy/[0.06]',
+              ? 'border-cyan ring-4 ring-cyan/20 shadow-lg shadow-cyan/15'
+              : 'border-cyan/40 hover:border-cyan hover:shadow-lg hover:shadow-cyan/15',
         )}
         data-cursor="pointer"
       >
-        <span className="min-w-0 flex-1">
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <FilterIcon
+            className={cn(
+              'h-4 w-4 shrink-0 transition-colors',
+              disabled ? 'text-slate-light' : 'text-cyan',
+            )}
+          />
           {selected ? (
             <span className="flex min-w-0 items-center gap-1.5">
               <span className="truncate text-xs font-semibold uppercase tracking-[0.05em] text-navy">

@@ -90,10 +90,43 @@ const socialLinks = [
     Icon: InstagramIcon,
     bg: 'bg-gradient-to-tr from-[#FEDA75] via-[#D62976] to-[#4F5BD5]',
   },
+  { href: contact.social.youtube, label: 'YouTube', Icon: YoutubeIcon, bg: 'bg-[#FF0000]' },
   { href: contact.social.facebook, label: 'Facebook', Icon: FacebookIcon, bg: 'bg-[#1877F2]' },
   { href: contact.social.linkedin, label: 'LinkedIn', Icon: LinkedinIcon, bg: 'bg-[#0A66C2]' },
-  { href: contact.social.youtube, label: 'YouTube', Icon: YoutubeIcon, bg: 'bg-[#FF0000]' },
 ]
+
+function SocialIconRow({
+  sizeClassName,
+  iconClassName,
+}: {
+  sizeClassName: string
+  iconClassName: string
+}) {
+  return (
+    <>
+      {socialLinks.map(({ href, label, Icon, bg }) => (
+        <motion.a
+          key={label}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={label}
+          className={cn(
+            'flex items-center justify-center rounded-full text-white shadow-md',
+            'ring-1 ring-white/20 transition-shadow hover:shadow-lg',
+            sizeClassName,
+            bg,
+          )}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.94 }}
+          data-cursor="pointer"
+        >
+          <Icon className={iconClassName} />
+        </motion.a>
+      ))}
+    </>
+  )
+}
 
 export function Navbar({ onCallbackClick }: NavbarProps) {
   const scrolled = useScrollPosition()
@@ -111,79 +144,72 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
       transition={{ duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
     >
       <nav
-        className="mx-auto flex w-full max-w-[100vw] items-center justify-between gap-2 px-3 min-[400px]:gap-2.5 min-[400px]:px-4 sm:gap-3 sm:px-6 lg:px-10 xl:px-14"
+        className="mx-auto flex w-full max-w-[100vw] flex-col gap-2 px-3 min-[400px]:gap-2.5 min-[400px]:px-4 sm:gap-0 sm:px-6 lg:px-10 xl:px-14"
         aria-label="Main navigation"
       >
-        <a
-          href="#home"
-          onClick={(e) => {
-            e.preventDefault()
-            document.getElementById('home')?.scrollIntoView({ behavior: 'smooth' })
-          }}
-          className="flex min-w-0 shrink items-center"
-          data-cursor="pointer"
-        >
-          <Logo
-            size="md"
-            className={cn(
-              'h-9 w-auto max-w-[min(42vw,9.5rem)] transition-[height,max-width] duration-300',
-              'min-[400px]:max-w-none min-[400px]:h-10',
-              scrolled ? 'sm:h-11 md:h-12' : 'sm:h-12 md:h-14 lg:h-16',
-            )}
-          />
-        </a>
+        <div className="flex w-full items-center justify-between gap-2">
+          <a
+            href="#home"
+            onClick={(e) => {
+              e.preventDefault()
+              document.getElementById('home')?.scrollIntoView({ behavior: 'smooth' })
+            }}
+            className="flex min-w-0 shrink items-center"
+            data-cursor="pointer"
+          >
+            <Logo
+              size="md"
+              className={cn(
+                'h-9 w-auto max-w-[min(42vw,9.5rem)] transition-[height,max-width] duration-300',
+                'min-[400px]:max-w-none min-[400px]:h-10',
+                scrolled ? 'sm:h-11 md:h-12' : 'sm:h-12 md:h-14 lg:h-16',
+              )}
+            />
+          </a>
 
-        <div className="flex shrink-0 items-center gap-1.5 min-[400px]:gap-2 sm:gap-3">
-          <div
-            className="hidden min-[400px]:flex items-center gap-1.5 sm:gap-2"
-            aria-label="Social media links"
-          >
-            {socialLinks.map(({ href, label, Icon, bg }) => (
-              <motion.a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={label}
-                className={cn(
-                  'flex items-center justify-center rounded-full text-white shadow-md',
-                  'ring-1 ring-white/20 transition-shadow hover:shadow-lg',
-                  'h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11',
-                  bg,
-                )}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.94 }}
-                data-cursor="pointer"
-              >
-                <Icon className="h-[18px] w-[18px] sm:h-5 sm:w-5 md:h-[22px] md:w-[22px]" />
-              </motion.a>
-            ))}
+          <div className="flex shrink-0 items-center gap-1.5 min-[400px]:gap-2 sm:gap-3">
+            <div
+              className="hidden items-center gap-1.5 sm:flex sm:gap-2"
+              aria-label="Social media links"
+            >
+              <SocialIconRow
+                sizeClassName="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11"
+                iconClassName="h-[18px] w-[18px] sm:h-5 sm:w-5 md:h-[22px] md:w-[22px]"
+              />
+            </div>
+            <motion.a
+              href={contact.phoneTel}
+              className={blueBtnClass}
+              aria-label={`Call ${contact.phoneDisplay}`}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              data-cursor="pointer"
+            >
+              <PhoneIcon className="h-4 w-4 min-[400px]:hidden" />
+              <span className="hidden min-[400px]:inline  sm:hidden">{contact.phoneDisplayCompact}</span>
+              <span className="hidden sm:inline">{contact.phoneDisplay}</span>
+            </motion.a>
+            <motion.button
+              type="button"
+              onClick={onCallbackClick}
+              className={blueBtnClass}
+              aria-label="Get Callback"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              data-cursor="pointer"
+            >
+              <CallbackIcon className="h-4 w-4 min-[400px]:hidden" />
+              <span className="hidden min-[400px]:inline sm:hidden">Callback</span>
+              <span className="hidden sm:inline">Get Callback</span>
+            </motion.button>
           </div>
-          <motion.a
-            href={contact.phoneTel}
-            className={blueBtnClass}
-            aria-label={`Call ${contact.phoneDisplay}`}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            data-cursor="pointer"
-          >
-            <PhoneIcon className="h-4 w-4 min-[400px]:hidden" />
-            <span className="hidden min-[400px]:inline  sm:hidden">{contact.phoneDisplayCompact}</span>
-            <span className="hidden sm:inline">{contact.phoneDisplay}</span>
-          </motion.a>
-          <motion.button
-            type="button"
-            onClick={onCallbackClick}
-            className={blueBtnClass}
-            aria-label="Get Callback"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            data-cursor="pointer"
-          >
-            <CallbackIcon className="h-4 w-4 min-[400px]:hidden" />
-            <span className="hidden min-[400px]:inline sm:hidden">Callback</span>
-            <span className="hidden sm:inline">Get Callback</span>
-          </motion.button>
+        </div>
+
+        <div
+          className="flex w-full items-center justify-center gap-3 sm:hidden"
+          aria-label="Social media links"
+        >
+          <SocialIconRow sizeClassName="h-8 w-8" iconClassName="h-4 w-4" />
         </div>
       </nav>
     </motion.header>

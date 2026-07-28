@@ -11,9 +11,9 @@ export const contact = {
   emailMailto: 'mailto:nsv@nsventures.in',
   whatsapp: 'https://wa.me/917506203777',
   social: {
-    instagram: 'https://instagram.com/nsventures',
-    facebook: 'https://facebook.com/nsventures',
-    linkedin: 'https://linkedin.com/company/nsventures',
-    youtube: 'https://youtube.com/@nsventures',
+    instagram: 'https://www.instagram.com/ns_ventures/',
+    youtube: 'https://www.youtube.com/nsventures',
+    facebook: 'http://facebook.com/NSVenturessocial/',
+    linkedin: 'https://www.linkedin.com/company/ns-ventures-india',
   },
 } as const
