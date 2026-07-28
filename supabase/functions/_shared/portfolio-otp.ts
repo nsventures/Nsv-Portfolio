@@ -48,11 +48,11 @@ export function generateOtp(): string {
   return String(n).padStart(6, '0')
 }
 
-export async function hashOtp(otp: string, email: string): Promise<string> {
+export async function hashOtp(otp: string, identifier: string): Promise<string> {
   const secret = Deno.env.get('OTP_HASH_SECRET')
   if (!secret) throw new Error('OTP_HASH_SECRET is not configured')
 
-  const normalized = normalizeEmail(email)
+  const normalized = identifier.trim()
   const data = new TextEncoder().encode(`${secret}:${normalized}:${otp}`)
   const hash = await crypto.subtle.digest('SHA-256', data)
   return Array.from(new Uint8Array(hash))

@@ -1,10 +1,7 @@
-import { normalizeEmail } from './portfolio-otp.ts'
-
 /** 24 hours — matches client-side device memory. */
 export const ACCESS_TTL_SECONDS = 24 * 60 * 60
 
 export interface AccessTokenClaims {
-  email: string
   name: string
   phone: string
   iat: number
@@ -46,7 +43,6 @@ async function hmacKey(secret: string): Promise<CryptoKey> {
 }
 
 export async function createAccessToken(profile: {
-  email: string
   name: string
   phone: string
 }): Promise<{ accessToken: string; expiresAt: string; expiresIn: number }> {
@@ -54,7 +50,6 @@ export async function createAccessToken(profile: {
   const exp = now + ACCESS_TTL_SECONDS
   const header = encodeJsonBase64Url({ alg: 'HS256', typ: 'JWT' })
   const payload = encodeJsonBase64Url({
-    email: normalizeEmail(profile.email),
     name: profile.name.trim(),
     phone: profile.phone.trim(),
     iat: now,
@@ -78,7 +73,7 @@ export async function createAccessToken(profile: {
 
 export async function verifyAccessToken(
   token: string,
-): Promise<Pick<AccessTokenClaims, 'email' | 'name' | 'phone'> | null> {
+): Promise<Pick<AccessTokenClaims, 'name' | 'phone'> | null> {
   try {
     const parts = token.split('.')
     if (parts.length !== 3) return null
@@ -99,13 +94,12 @@ export async function verifyAccessToken(
       new TextDecoder().decode(decodeBase64Url(payloadB64)),
     ) as AccessTokenClaims
 
-    if (!payload.email || !payload.name || !payload.phone) return null
+    if (!payload.name || !payload.phone) return null
     if (typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now()) {
       return null
     }
 
     return {
-      email: payload.email,
       name: payload.name,
       phone: payload.phone,
     }

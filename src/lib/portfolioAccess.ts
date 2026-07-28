@@ -5,7 +5,6 @@ export const PORTFOLIO_ACCESS_TTL_MS = 24 * 60 * 60 * 1000
 
 export interface PortfolioAccessInfo {
   name: string
-  email: string
   phone: string
   validatedAt: string
   expiresAt: string
@@ -22,7 +21,7 @@ export function clearPortfolioAccess(): void {
 }
 
 function isAccessRecordValid(parsed: PortfolioAccessInfo): boolean {
-  if (!parsed.name?.trim() || !parsed.email?.trim() || !parsed.phone?.trim()) {
+  if (!parsed.name?.trim() || !parsed.phone?.trim()) {
     return false
   }
   if (!parsed.accessToken?.trim() || !parsed.expiresAt) {
@@ -56,13 +55,12 @@ export function getPortfolioAccessToken(): string | null {
 }
 
 export function savePortfolioAccess(
-  info: Pick<PortfolioAccessInfo, 'name' | 'email' | 'phone' | 'accessToken' | 'expiresAt'> & {
+  info: Pick<PortfolioAccessInfo, 'name' | 'phone' | 'accessToken' | 'expiresAt'> & {
     verifiedAt?: string
   },
 ): PortfolioAccessInfo {
   const saved: PortfolioAccessInfo = {
     name: info.name.trim(),
-    email: info.email.trim(),
     phone: info.phone.trim(),
     validatedAt: info.verifiedAt ?? new Date().toISOString(),
     expiresAt: info.expiresAt,
@@ -75,11 +73,11 @@ export function savePortfolioAccess(
 /** Delay before auto-showing the access gate (ms). */
 export const PORTFOLIO_ACCESS_TIMER_MS = 18_000
 
-/** Set true to require email OTP before viewing portfolio items. */
+/** Set true to require WhatsApp OTP before viewing portfolio items. */
 export const PORTFOLIO_ACCESS_VALIDATION_ENABLED = true
 
 export class PortfolioSessionExpiredError extends Error {
-  constructor(message = 'Your session expired. Please verify your email again.') {
+  constructor(message = 'Your session expired. Please verify your phone again.') {
     super(message)
     this.name = 'PortfolioSessionExpiredError'
   }

@@ -3,7 +3,6 @@ import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 
 export interface PortfolioOtpSendPayload {
   name: string
-  email: string
   phone: string
   projectName?: string | null
   siteOrigin?: string
@@ -11,7 +10,6 @@ export interface PortfolioOtpSendPayload {
 
 export interface PortfolioOtpSendResult {
   expiresIn: number
-  emailMasked: string
   phoneMasked: string
   whatsappSent: boolean
   whatsappError?: string | null
@@ -56,13 +54,12 @@ async function dispatchWhatsappOtp(token: string, origin: string) {
 }
 
 export interface PortfolioOtpVerifyPayload {
-  email: string
+  phone: string
   otp: string
 }
 
 export interface PortfolioOtpVerifyResult {
   name: string
-  email: string
   phone: string
   verifiedAt: string
   accessToken: string
@@ -100,7 +97,7 @@ function isEdgeOk(data: unknown): data is EdgeOk<Record<string, unknown>> {
   return Boolean(data && typeof data === 'object' && (data as EdgeOk<unknown>).ok === true)
 }
 
-export async function sendPortfolioEmailOtp(
+export async function sendPortfolioOtp(
   payload: PortfolioOtpSendPayload,
 ): Promise<PortfolioOtpSendResult> {
   if (!isSupabaseConfigured()) {
@@ -137,14 +134,13 @@ export async function sendPortfolioEmailOtp(
 
   return {
     expiresIn: result.expiresIn,
-    emailMasked: result.emailMasked,
     phoneMasked: result.phoneMasked,
     whatsappSent,
     whatsappError,
   }
 }
 
-export async function verifyPortfolioEmailOtp(
+export async function verifyPortfolioOtp(
   payload: PortfolioOtpVerifyPayload,
 ): Promise<PortfolioOtpVerifyResult> {
   if (!isSupabaseConfigured()) {

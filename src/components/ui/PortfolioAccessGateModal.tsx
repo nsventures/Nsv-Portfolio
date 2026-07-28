@@ -1,9 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  sendPortfolioEmailOtp,
-  verifyPortfolioEmailOtp,
-} from '../../api/portfolioOtp'
+import { sendPortfolioOtp, verifyPortfolioOtp } from '../../api/portfolioOtp'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { savePortfolioAccess } from '../../lib/portfolioAccess'
 import { DEFAULT_PHONE_COUNTRY, findPhoneCountry } from '../../data/phoneCountries'
@@ -22,14 +19,12 @@ type Step = 'details' | 'otp'
 
 interface FormState {
   name: string
-  email: string
   countryCode: string
   phone: string
 }
 
 interface FormErrors {
   name?: string
-  email?: string
   phone?: string
   otp?: string
   submit?: string
@@ -38,14 +33,21 @@ interface FormErrors {
 function validateDetails(data: FormState): FormErrors {
   const errors: FormErrors = {}
   if (!data.name.trim()) errors.name = 'Name is required'
-  if (!data.email.trim()) errors.email = 'Email is required'
-  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
-    errors.email = 'Enter a valid email'
-  }
   const country = findPhoneCountry(data.countryCode)
   const phoneError = validateNationalNumber(country, data.phone)
   if (phoneError) errors.phone = phoneError
   return errors
+}
+
+function whatsappFailureMessage(whatsappError: string | null): string {
+  const lower = whatsappError?.toLowerCase() ?? ''
+  if (lower.includes('invalid end point') || lower.includes('invalid endpoint')) {
+    return 'WhatsApp failed — Authyo Client ID/Secret must match the app with your authorized endpoints saved. Check Authyo → Application → SDK, update .env.local, run npm run test:authyo.'
+  }
+  if (lower.includes('relay')) {
+    return 'WhatsApp relay offline — run npm run dev:all (needs import server on :3001).'
+  }
+  return whatsappError ?? 'Could not send the WhatsApp verification code. Please try again.'
 }
 
 export function PortfolioAccessGateModal({
@@ -55,15 +57,11 @@ export function PortfolioAccessGateModal({
   const [step, setStep] = useState<Step>('details')
   const [data, setData] = useState<FormState>({
     name: '',
-    email: '',
     countryCode: DEFAULT_PHONE_COUNTRY.code,
     phone: '',
   })
   const [otp, setOtp] = useState('')
-  const [emailMasked, setEmailMasked] = useState('')
   const [phoneMasked, setPhoneMasked] = useState('')
-  const [whatsappSent, setWhatsappSent] = useState(false)
-  const [whatsappError, setWhatsappError] = useState<string | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [resendIn, setResendIn] = useState(0)
@@ -78,7 +76,7 @@ export function PortfolioAccessGateModal({
     return () => window.clearTimeout(timer)
   }, [resendIn])
 
-  const update = (key: 'name' | 'email' | 'phone', value: string) => {
+  const update = (key: 'name' | 'phone', value: string) => {
     setData((prev) => ({ ...prev, [key]: value }))
     if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined, submit: undefined }))
   }
@@ -101,16 +99,18 @@ export function PortfolioAccessGateModal({
     setErrors({})
 
     try {
-      const result = await sendPortfolioEmailOtp({
+      const result = await sendPortfolioOtp({
         name: data.name,
-        email: data.email,
         phone: toE164(findPhoneCountry(data.countryCode), data.phone),
         projectName: pendingProjectName,
       })
-      setEmailMasked(result.emailMasked)
+
+      if (!result.whatsappSent) {
+        setErrors({ submit: whatsappFailureMessage(result.whatsappError ?? null) })
+        return
+      }
+
       setPhoneMasked(result.phoneMasked)
-      setWhatsappSent(result.whatsappSent)
-      setWhatsappError(result.whatsappError ?? null)
       setResendIn(60)
       setOtp('')
       setStep('otp')
@@ -140,13 +140,12 @@ export function PortfolioAccessGateModal({
     setErrors({})
 
     try {
-      const profile = await verifyPortfolioEmailOtp({
-        email: data.email.trim(),
+      const profile = await verifyPortfolioOtp({
+        phone: toE164(findPhoneCountry(data.countryCode), data.phone),
         otp: otp.trim(),
       })
       savePortfolioAccess({
         name: profile.name,
-        email: profile.email,
         phone: profile.phone,
         accessToken: profile.accessToken,
         expiresAt: profile.expiresAt,
@@ -198,32 +197,13 @@ export function PortfolioAccessGateModal({
               id="portfolio-access-title"
               className="mt-3 font-display text-xl sm:text-2xl font-bold text-white"
             >
-              {step === 'otp' ? 'Check Your Email & WhatsApp' : 'View Our Work'}
+              {step === 'otp' ? 'Check WhatsApp' : 'View Our Work'}
             </h2>
             <p className="mt-1.5 text-sm text-white/75 leading-relaxed">
               {step === 'otp' ? (
                 <>
-                  We sent a 6-digit code to{' '}
-                  <span className="text-white/90">{emailMasked || 'your email'}</span>
-                  {whatsappSent && phoneMasked ? (
-                    <>
-                      {' '}
-                      and WhatsApp{' '}
-                      <span className="text-white/90">{phoneMasked}</span>.
-                    </>
-                  ) : (
-                    '.'
-                  )}
-                  {!whatsappSent ? (
-                    <span className="mt-1 block text-white/60">
-                      {whatsappError?.toLowerCase().includes('invalid end point') ||
-                      whatsappError?.toLowerCase().includes('invalid endpoint')
-                        ? 'WhatsApp failed — Authyo Client ID/Secret must match the app with your authorized endpoints saved. Check Authyo → Application → SDK, update .env.local, run npm run test:authyo.'
-                        : whatsappError?.includes('relay')
-                          ? 'WhatsApp relay offline — run npm run dev:all (needs import server on :3001).'
-                          : whatsappError ?? 'WhatsApp delivery failed — use the code from your email.'}
-                    </span>
-                  ) : null}
+                  We sent a 6-digit code via WhatsApp to{' '}
+                  <span className="text-white/90">{phoneMasked || 'your number'}</span>.
                 </>
               ) : pendingProjectName ? (
                 `Verify your details to watch ${pendingProjectName}.`
@@ -253,22 +233,7 @@ export function PortfolioAccessGateModal({
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={data.email}
-                    onChange={(e) => update('email', e.target.value)}
-                    placeholder="you@email.com"
-                    autoComplete="email"
-                    className={inputClass(!!errors.email)}
-                  />
-                  {errors.email && <p className="mt-1 text-xs text-red-500">{errors.email}</p>}
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">
-                    Phone
+                    Phone (WhatsApp)
                   </label>
                   <PhoneInput
                     countryCode={data.countryCode}
