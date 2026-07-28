@@ -17,6 +17,20 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 const DEVTOOLS_SIZE_THRESHOLD = 160
 const DEVTOOLS_CHECK_INTERVAL_MS = 600
+const DEBUGGER_PAUSE_THRESHOLD_MS = 100
+
+/**
+ * `debugger` only pauses execution when a debugger is attached, regardless of
+ * panel or docked/undocked state — the only signal that catches DevTools
+ * opened before this page loaded. While paused, the whole page freezes until
+ * DevTools is closed (or the pause is manually resumed).
+ */
+function isDebuggerAttached(): boolean {
+  const start = performance.now()
+  // eslint-disable-next-line no-debugger
+  debugger
+  return performance.now() - start > DEBUGGER_PAUSE_THRESHOLD_MS
+}
 
 function createDevToolsOverlay(): HTMLDivElement {
   const overlay = document.createElement('div')
@@ -65,11 +79,10 @@ function attachDevToolsGuard(): () => void {
       window.outerHeight - window.innerHeight > DEVTOOLS_SIZE_THRESHOLD
 
     consoleProbeTripped = false
-    // eslint-disable-next-line no-console
     console.log(probe)
     console.clear()
 
-    return sizeFlag || consoleProbeTripped
+    return sizeFlag || consoleProbeTripped || isDebuggerAttached()
   }
 
   const check = () => {
