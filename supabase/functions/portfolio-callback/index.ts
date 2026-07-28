@@ -33,13 +33,6 @@ Deno.serve(async (req) => {
     if (!name) return errorResponse('Name is required')
     if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
 
-    await sendCallbackRequestEmail({
-      name,
-      phone: phoneE164,
-      message,
-      projectName,
-    })
-
     const supabase = createServiceClient()
     const { error: inquiryError } = await supabase.from('inquiries').insert({
       name,
@@ -55,6 +48,13 @@ Deno.serve(async (req) => {
 
     if (inquiryError) {
       console.error('[portfolio-callback] inquiry insert failed:', inquiryError.message)
+    }
+
+    try {
+      await sendCallbackRequestEmail({ name, phone: phoneE164, message, projectName })
+    } catch (emailErr) {
+      const emailMessage = emailErr instanceof Error ? emailErr.message : 'Failed to send notification email'
+      console.error('[portfolio-callback] notification email failed:', emailMessage)
     }
 
     return jsonResponse({ ok: true })
