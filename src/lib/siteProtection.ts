@@ -46,10 +46,31 @@ function createDevToolsOverlay(): HTMLDivElement {
 
 function attachDevToolsGuard(): () => void {
   let overlay: HTMLDivElement | null = null
+  let consoleProbeTripped = false
 
-  const isDevToolsOpen = () =>
-    window.outerWidth - window.innerWidth > DEVTOOLS_SIZE_THRESHOLD ||
-    window.outerHeight - window.innerHeight > DEVTOOLS_SIZE_THRESHOLD
+  // Reading `.id` only happens if DevTools is actually inspecting the logged
+  // object — this fires whether DevTools is docked or a separate window,
+  // unlike the outerWidth/innerWidth size check below.
+  const probe = new Image()
+  Object.defineProperty(probe, 'id', {
+    get() {
+      consoleProbeTripped = true
+      return ''
+    },
+  })
+
+  const isDevToolsOpen = () => {
+    const sizeFlag =
+      window.outerWidth - window.innerWidth > DEVTOOLS_SIZE_THRESHOLD ||
+      window.outerHeight - window.innerHeight > DEVTOOLS_SIZE_THRESHOLD
+
+    consoleProbeTripped = false
+    // eslint-disable-next-line no-console
+    console.log(probe)
+    console.clear()
+
+    return sizeFlag || consoleProbeTripped
+  }
 
   const check = () => {
     if (isDevToolsOpen()) {
