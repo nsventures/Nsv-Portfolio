@@ -148,7 +148,7 @@ export function Portfolio() {
         aria-label="Portfolio"
       >
         <div className="w-full px-5 sm:px-8 lg:px-10 xl:px-14">
-          <div className="relative z-20 mb-6 overflow-visible">
+          <div className="relative z-20 mb-6 flex justify-center overflow-visible">
             <SearchableFilterDropdown
                 id="portfolio-state-filter"
                 value={activeState ?? ''}

@@ -10,4 +10,10 @@ export const contact = {
   phoneTel: 'tel:+917506203777',
   emailMailto: 'mailto:nsv@nsventures.in',
   whatsapp: 'https://wa.me/917506203777',
+  social: {
+    instagram: 'https://instagram.com/nsventures',
+    facebook: 'https://facebook.com/nsventures',
+    linkedin: 'https://linkedin.com/company/nsventures',
+    youtube: 'https://youtube.com/@nsventures',
+  },
 } as const

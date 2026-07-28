@@ -15,8 +15,66 @@ function isEditableTarget(target: EventTarget | null): boolean {
   )
 }
 
+const DEVTOOLS_SIZE_THRESHOLD = 160
+const DEVTOOLS_CHECK_INTERVAL_MS = 600
+
+function createDevToolsOverlay(): HTMLDivElement {
+  const overlay = document.createElement('div')
+  overlay.setAttribute('role', 'alertdialog')
+  overlay.setAttribute('aria-live', 'assertive')
+  overlay.style.cssText = [
+    'position:fixed',
+    'inset:0',
+    'z-index:2147483647',
+    'display:flex',
+    'align-items:center',
+    'justify-content:center',
+    'text-align:center',
+    'padding:24px',
+    'background:rgba(0,15,30,0.92)',
+    'backdrop-filter:blur(14px)',
+    '-webkit-backdrop-filter:blur(14px)',
+    'color:#fff',
+    'font-family:system-ui,-apple-system,sans-serif',
+    'font-size:16px',
+    'font-weight:600',
+    'line-height:1.5',
+  ].join(';')
+  overlay.textContent = 'Please close developer tools to continue viewing this site.'
+  return overlay
+}
+
+function attachDevToolsGuard(): () => void {
+  let overlay: HTMLDivElement | null = null
+
+  const isDevToolsOpen = () =>
+    window.outerWidth - window.innerWidth > DEVTOOLS_SIZE_THRESHOLD ||
+    window.outerHeight - window.innerHeight > DEVTOOLS_SIZE_THRESHOLD
+
+  const check = () => {
+    if (isDevToolsOpen()) {
+      if (!overlay) {
+        overlay = createDevToolsOverlay()
+        document.body.appendChild(overlay)
+      }
+    } else if (overlay) {
+      overlay.remove()
+      overlay = null
+    }
+  }
+
+  check()
+  const timer = window.setInterval(check, DEVTOOLS_CHECK_INTERVAL_MS)
+
+  return () => {
+    window.clearInterval(timer)
+    overlay?.remove()
+  }
+}
+
 export function attachSiteProtection(): () => void {
   document.body.classList.add('site-protection-enabled')
+  const detachDevToolsGuard = attachDevToolsGuard()
 
   const onContextMenu = (event: MouseEvent) => {
     if (isEditableTarget(event.target)) return
@@ -72,5 +130,6 @@ export function attachSiteProtection(): () => void {
     document.removeEventListener('cut', onClipboard)
     document.removeEventListener('keydown', onKeyDown)
     document.removeEventListener('dragstart', onDragStart)
+    detachDevToolsGuard()
   }
 }

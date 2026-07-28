@@ -10,7 +10,6 @@ import { PhoneInput } from './PhoneInput'
 
 interface PortfolioCallbackModalProps {
   initialName?: string
-  initialEmail?: string
   initialPhone?: string
   projectName?: string | null
   onClose: () => void
@@ -18,7 +17,6 @@ interface PortfolioCallbackModalProps {
 
 interface FormState {
   name: string
-  email: string
   countryCode: string
   phone: string
   message: string
@@ -26,7 +24,6 @@ interface FormState {
 
 export function PortfolioCallbackModal({
   initialName = '',
-  initialEmail = '',
   initialPhone = '',
   projectName,
   onClose,
@@ -34,7 +31,6 @@ export function PortfolioCallbackModal({
   const parsedInitialPhone = parseE164Phone(initialPhone)
   const [data, setData] = useState<FormState>({
     name: initialName,
-    email: initialEmail,
     countryCode: initialPhone ? parsedInitialPhone.countryCode : DEFAULT_PHONE_COUNTRY.code,
     phone: parsedInitialPhone.nationalNumber,
     message: '',
@@ -62,8 +58,8 @@ export function PortfolioCallbackModal({
     const country = findPhoneCountry(data.countryCode)
     const nextPhoneError = validateNationalNumber(country, data.phone)
 
-    if (!data.name.trim() || !data.email.trim()) {
-      setError('Please fill in name, email, and phone.')
+    if (!data.name.trim()) {
+      setError('Please fill in name and phone.')
       setPhoneError(nextPhoneError)
       return
     }
@@ -81,7 +77,6 @@ export function PortfolioCallbackModal({
     try {
       await submitPortfolioCallback({
         name: data.name,
-        email: data.email,
         phone: toE164(country, data.phone),
         message: data.message || null,
         projectName,
@@ -165,19 +160,6 @@ export function PortfolioCallbackModal({
                   className={inputClass()}
                   placeholder="Your name"
                   autoComplete="name"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  value={data.email}
-                  onChange={(e) => setData((p) => ({ ...p, email: e.target.value }))}
-                  className={inputClass()}
-                  placeholder="you@email.com"
-                  autoComplete="email"
                 />
               </div>
               <div>

@@ -5,7 +5,6 @@ import { contact } from '../../data/contact'
 
 export interface InquiryFormData {
   name: string
-  email: string
   phone: string
   company: string
   projectType: string
@@ -21,7 +20,6 @@ interface ProjectInquiryModalProps {
 
 const initialData: InquiryFormData = {
   name: '',
-  email: '',
   phone: '',
   company: '',
   projectType: '',
@@ -121,8 +119,6 @@ export function ProjectInquiryModal({ isOpen, onClose }: ProjectInquiryModalProp
   const validateStep1 = () => {
     const next: Partial<Record<keyof InquiryFormData, string>> = {}
     if (!data.name.trim()) next.name = 'Name is required'
-    if (!data.email.trim()) next.email = 'Email is required'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) next.email = 'Enter a valid email'
     if (!data.phone.trim()) next.phone = 'Phone is required'
     setErrors(next)
     return Object.keys(next).length === 0
@@ -237,16 +233,6 @@ export function ProjectInquiryModal({ isOpen, onClose }: ProjectInquiryModalProp
                             onChange={(v) => update('name', v)}
                             placeholder="Your name"
                             error={errors.name}
-                          />
-                        </div>
-                        <div>
-                          <FieldLabel required>Email</FieldLabel>
-                          <TextInput
-                            type="email"
-                            value={data.email}
-                            onChange={(v) => update('email', v)}
-                            placeholder="you@company.com"
-                            error={errors.email}
                           />
                         </div>
                         <div>
