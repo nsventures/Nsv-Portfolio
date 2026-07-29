@@ -26,6 +26,10 @@ export function PhoneInput({
   const autoId = useId()
   const inputId = id ?? autoId
   const country = findPhoneCountry(countryCode)
+  const maxDigits =
+    typeof country.nationalLength === 'number'
+      ? country.nationalLength
+      : country.nationalLength[1]
   const placeholder =
     typeof country.nationalLength === 'number'
       ? '9'.repeat(country.nationalLength)
@@ -57,8 +61,23 @@ export function PhoneInput({
           inputMode="numeric"
           autoComplete="tel-national"
           disabled={disabled}
+          maxLength={maxDigits + 2}
           value={nationalNumber}
-          onChange={(e) => onNationalNumberChange(e.target.value.replace(/[^\d\s-]/g, ''))}
+          onChange={(e) => {
+            const cleaned = e.target.value.replace(/[^\d\s-]/g, '')
+            let digitCount = 0
+            let cutoff = cleaned.length
+            for (let i = 0; i < cleaned.length; i++) {
+              if (/\d/.test(cleaned[i])) {
+                digitCount++
+                if (digitCount > maxDigits) {
+                  cutoff = i
+                  break
+                }
+              }
+            }
+            onNationalNumberChange(cleaned.slice(0, cutoff))
+          }}
           placeholder={placeholder}
           className={cn(
             'min-w-0 flex-1 border-0 bg-off-white px-3 py-2.5 text-sm text-navy',
