@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
 import {
@@ -16,6 +16,8 @@ type StatusFilter = 'all' | 'published' | 'draft'
 
 export function ToursPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const focusId = searchParams.get('focus')
   const [tours, setTours] = useState<PortfolioItemRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,6 +29,7 @@ export function ToursPage() {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [savingOrder, setSavingOrder] = useState(false)
+  const [highlightId, setHighlightId] = useState<string | null>(focusId)
 
   const load = () => {
     setLoading(true)
@@ -39,6 +42,21 @@ export function ToursPage() {
   useEffect(() => {
     load()
   }, [])
+
+  useEffect(() => {
+    if (!focusId || loading || tours.length === 0) return
+
+    setHighlightId(focusId)
+    const row = document.getElementById(`tour-row-${focusId}`)
+    row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+
+    const next = new URLSearchParams(searchParams)
+    next.delete('focus')
+    setSearchParams(next, { replace: true })
+
+    const timer = window.setTimeout(() => setHighlightId(null), 3500)
+    return () => window.clearTimeout(timer)
+  }, [focusId, loading, tours, searchParams, setSearchParams])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -56,7 +74,15 @@ export function ToursPage() {
         return false
       }
       if (stateFilter === 'none' && t.state) return false
-      if (stateFilter !== 'all' && stateFilter !== 'none' && t.state !== stateFilter) return false
+      // No-state items appear under every specific state filter
+      if (
+        stateFilter !== 'all' &&
+        stateFilter !== 'none' &&
+        t.state &&
+        t.state !== stateFilter
+      ) {
+        return false
+      }
       if (mediaFilter !== 'all' && t.media_type !== mediaFilter) return false
       if (statusFilter === 'published' && !t.is_published) return false
       if (statusFilter === 'draft' && t.is_published) return false
@@ -241,13 +267,18 @@ export function ToursPage() {
                 {filtered.map((tour) => (
                   <tr
                     key={tour.id}
+                    id={`tour-row-${tour.id}`}
                     draggable={canReorder}
                     onDragStart={() => canReorder && setDragId(tour.id)}
                     onDragEnd={() => setDragId(null)}
                     onDragOver={(e) => canReorder && e.preventDefault()}
                     onDrop={() => canReorder && handleDrop(tour.id)}
                     className={`border-b border-border last:border-0 transition-colors ${
-                      dragId === tour.id ? 'bg-cyan/5 opacity-60' : 'hover:bg-off-white/50'
+                      highlightId === tour.id
+                        ? 'bg-cyan/15 ring-2 ring-inset ring-cyan/40'
+                        : dragId === tour.id
+                          ? 'bg-cyan/5 opacity-60'
+                          : 'hover:bg-off-white/50'
                     }`}
                   >
                     <td

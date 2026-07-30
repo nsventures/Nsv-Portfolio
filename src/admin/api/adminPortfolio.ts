@@ -95,8 +95,9 @@ export async function fetchAdminTours(): Promise<PortfolioItemRow[]> {
   const { data, error } = await supabase
     .from('portfolio_items')
     .select('*, cities(name)')
-    .order('sort_order')
-    .order('name')
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
 
   if (error) throw new Error(error.message)
   return (data ?? []) as PortfolioItemRow[]
@@ -138,7 +139,20 @@ export async function createTour(
   const baseId = slugify(item.id.trim()) || 'tour'
   const id = await uniqueTourId(baseId)
 
-  const { error } = await supabase.from('portfolio_items').insert({ ...item, id })
+  let sortOrder = item.sort_order
+  if (sortOrder == null || sortOrder === 0) {
+    const { data: last } = await supabase
+      .from('portfolio_items')
+      .select('sort_order')
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    sortOrder = (last?.sort_order ?? 0) + 1
+  }
+
+  const { error } = await supabase
+    .from('portfolio_items')
+    .insert({ ...item, id, sort_order: sortOrder })
   if (error) {
     if (error.message.includes('portfolio_items_pkey') || error.code === '23505') {
       throw new Error(
@@ -156,7 +170,12 @@ export async function updateTour(
   item: Partial<Omit<PortfolioItemRow, 'id' | 'created_at' | 'updated_at' | 'cities'>>,
 ): Promise<void> {
   const supabase = getSupabase()
-  const { error } = await supabase.from('portfolio_items').update(item).eq('id', id)
+  // Never let form/draft overwrites change drag order
+  const { sort_order: _ignored, ...safe } = item as Partial<PortfolioItemRow> & {
+    sort_order?: number
+  }
+
+  const { error } = await supabase.from('portfolio_items').update(safe).eq('id', id)
   if (error) throw new Error(error.message)
 }
 

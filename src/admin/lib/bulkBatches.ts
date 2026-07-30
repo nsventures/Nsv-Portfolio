@@ -21,5 +21,6 @@ export function totalBatchRows(batches: BulkBatch[]): number {
 }
 
 export function batchIsReady(batch: BulkBatch): boolean {
-  return Boolean(batch.stateId && batch.fileName && batch.rows.length > 0)
+  // State is optional — blank means item shows in all state filters
+  return Boolean(batch.fileName && batch.rows.length > 0)
 }

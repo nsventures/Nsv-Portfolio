@@ -90,7 +90,7 @@ export async function checkBulkImportServer(): Promise<boolean> {
 
 export async function runBulkImport(
   accessToken: string,
-  state: string,
+  state: string | null | undefined,
   rows: BulkRow[],
   skipExisting: boolean,
   mediaType: BulkMediaType,
@@ -102,7 +102,12 @@ export async function runBulkImport(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ state, rows, skipExisting, mediaType }),
+    body: JSON.stringify({
+      state: state?.trim() || null,
+      rows,
+      skipExisting,
+      mediaType,
+    }),
   })
 
   if (!res.ok) {

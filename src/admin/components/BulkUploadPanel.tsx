@@ -48,13 +48,13 @@ const PANEL_COPY: Record<
 > = {
   tour: {
     sheetHint:
-      'For each sheet: choose a state, then attach a CSV/Excel with Name + Link columns.',
+      'For each sheet: optionally choose a state, then attach a CSV/Excel with Name + Link columns. Leave state blank to show in all state filters.',
     fileHint: 'Name + Link columns (virtual tour URLs)',
     thumbNote: 'Thumbnails: Playwright opens the tour and captures a frame.',
   },
   video: {
     sheetHint:
-      'For each sheet: choose a state, then attach your YouTube CSV (Category + Title + Youtube Link).',
+      'For each sheet: optionally choose a state, then attach your YouTube CSV (Category + Title + Youtube Link). Leave state blank to show in all state filters.',
     fileHint: 'Builder + Project + City + Category + Youtube Link columns',
     thumbNote: 'Thumbnails: fetched from YouTube (original video poster).',
   },
@@ -260,8 +260,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
         <div className="space-y-4">
           {batches.map((batch, index) => {
             const isParsing = parsingBatchId === batch.id
-            const locationMissing = batch.fileName && !batch.stateId
-            const fileMissing = batch.stateId && !batch.fileName
+            const fileMissing = !batch.fileName && Boolean(batch.stateId)
 
             return (
               <div
@@ -293,6 +292,9 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                   <div>
                     <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
                       State
+                      <span className="ml-1 font-normal normal-case tracking-normal text-slate/60">
+                        (optional)
+                      </span>
                     </label>
                     <select
                       value={batch.stateId}
@@ -300,7 +302,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                       onChange={(e) => updateBatch(batch.id, { stateId: e.target.value })}
                       className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60"
                     >
-                      <option value="">Select state…</option>
+                      <option value="">All states (no filter)</option>
                       {INDIAN_STATES.map((state) => (
                         <option key={state} value={state}>
                           {state}
@@ -333,11 +335,8 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                   </div>
                 </div>
 
-                {locationMissing && (
-                  <p className="text-xs text-amber-700">Select a state for this sheet.</p>
-                )}
                 {fileMissing && (
-                  <p className="text-xs text-amber-700">Attach a sheet file for this state.</p>
+                  <p className="text-xs text-amber-700">Attach a sheet file to import this batch.</p>
                 )}
               </div>
             )
@@ -465,7 +464,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
             {readyBatches.map((batch) => (
               <div key={batch.id} className="p-4 sm:px-6">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate mb-2">
-                  {batch.stateId} ← {batch.fileName}
+                  {batch.stateId || 'All states'} ← {batch.fileName}
                 </p>
                 <ul className="space-y-1 text-sm">
                   {batch.rows.slice(0, 5).map((row) => (

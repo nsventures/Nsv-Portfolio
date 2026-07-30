@@ -180,10 +180,12 @@ async function processBulkImport(req, res) {
   }
 
   const { state, rows, skipExisting = true, mediaType = 'virtual-tour' } = body ?? {}
-  if (!state?.trim() || !Array.isArray(rows) || rows.length === 0) {
-    sendJson(res, 400, { error: 'state and rows[] are required' })
+  if (!Array.isArray(rows) || rows.length === 0) {
+    sendJson(res, 400, { error: 'rows[] is required' })
     return
   }
+
+  const stateLabel = typeof state === 'string' ? state.trim() : ''
 
   if (mediaType !== 'virtual-tour' && mediaType !== 'video') {
     sendJson(res, 400, { error: 'mediaType must be virtual-tour or video' })
@@ -305,7 +307,7 @@ async function processBulkImport(req, res) {
             withItemLabels(
               { name: displayName },
               row,
-              state,
+              stateLabel,
               true,
             ),
           )
@@ -427,7 +429,7 @@ async function processBulkImport(req, res) {
                     categorySupported,
                   ),
                   row,
-                  state,
+                  stateLabel,
                   labelsSupported,
                 ),
                 videoPublishedAt,
@@ -454,7 +456,7 @@ async function processBulkImport(req, res) {
                   categorySupported,
                 ),
                 row,
-                state,
+                stateLabel,
                 labelsSupported,
               ),
               videoPublishedAt,

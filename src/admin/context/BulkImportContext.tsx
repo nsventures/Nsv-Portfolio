@@ -77,7 +77,7 @@ export function BulkImportProvider({ children }: { children: ReactNode }) {
       for (const batch of batches) {
         if (abortRef.current) break
 
-        const batchLabel = `${batch.fileName} · ${batch.state}`
+        const batchLabel = `${batch.fileName} · ${batch.state?.trim() || 'All states'}`
 
         await runBulkImport(
           accessToken,

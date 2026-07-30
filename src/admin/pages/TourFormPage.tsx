@@ -125,7 +125,12 @@ export function TourFormPage() {
         setExistingCategory(tour.category)
         setForm(
           draft && hasTourFormDraftContent(draft)
-            ? { ...draft, media_type: inferMediaTypeFromLink(draft.link || tour.link) }
+            ? {
+                ...draft,
+                // Always keep server position — drafts often default sort_order to 0
+                sort_order: tour.sort_order,
+                media_type: inferMediaTypeFromLink(draft.link || tour.link),
+              }
             : loaded,
         )
         setExistingThumb(tour.thumbnail_path)
@@ -156,8 +161,8 @@ export function TourFormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.id.trim() || !form.project_name.trim() || !form.link.trim() || !form.state.trim()) {
-      setError('State, project name, ID, and link are required.')
+    if (!form.id.trim() || !form.project_name.trim() || !form.link.trim()) {
+      setError('Project name, ID, and link are required.')
       return
     }
 
@@ -176,7 +181,7 @@ export function TourFormPage() {
         id: form.id.trim(),
         name: projectName,
         link: form.link.trim(),
-        state: form.state.trim(),
+        state: form.state.trim() || null,
         builder_name: form.builder_name.trim() || null,
         project_name: projectName,
         city_label: form.city_label.trim() || null,
@@ -184,19 +189,20 @@ export function TourFormPage() {
         media_type: form.media_type,
         category: existingCategory,
         is_published: form.is_published,
-        sort_order: form.sort_order,
         thumbnail_path: thumbnailPath,
       }
 
       if (isEdit && id) {
         const { id: _omit, ...updates } = payload
+        // Do not send sort_order on edit — keeps drag-reorder position
         await updateTour(id, updates)
+        clearTourFormDraft(draftKey)
+        navigate(`/admin/tours?focus=${encodeURIComponent(id)}`, { replace: true })
       } else {
-        await createTour(payload)
+        const newId = await createTour({ ...payload, sort_order: form.sort_order })
+        clearTourFormDraft(draftKey)
+        navigate(`/admin/tours?focus=${encodeURIComponent(newId)}`, { replace: true })
       }
-
-      clearTourFormDraft(draftKey)
-      navigate('/admin/tours', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed')
     } finally {
@@ -358,7 +364,10 @@ export function TourFormPage() {
             <div className="grid sm:grid-cols-2 gap-5">
               <div>
                 <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
-                  State *
+                  State
+                  <span className="ml-1 font-normal normal-case tracking-normal text-slate/60">
+                    (optional — blank shows in all states)
+                  </span>
                 </label>
                 <select
                   value={form.state}
