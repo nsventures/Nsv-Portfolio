@@ -23,6 +23,7 @@ export function usePortfolio({ state, city, mediaType, category }: UsePortfolioO
   const [items, setItems] = useState<PortfolioEntry[]>([])
   const [cityCounts, setCityCounts] = useState<Record<string, number>>({})
   const [stateCounts, setStateCounts] = useState<Record<string, number>>({})
+  const [noStateCount, setNoStateCount] = useState(0)
   const [cityStates, setCityStates] = useState<Record<string, string>>({})
   const [categoryCounts, setCategoryCounts] = useState<Record<string, number>>({})
   const [total, setTotal] = useState(0)
@@ -38,6 +39,7 @@ export function usePortfolio({ state, city, mediaType, category }: UsePortfolioO
       setItems((prev) => (replace ? result.items : [...prev, ...result.items]))
       setCityCounts(result.cityCounts)
       setStateCounts(result.stateCounts ?? {})
+      setNoStateCount(result.noStateCount ?? 0)
       setCityStates(result.cityStates ?? {})
       setCategoryCounts(result.categoryCounts ?? {})
       setTotal(result.total)
@@ -95,6 +97,7 @@ export function usePortfolio({ state, city, mediaType, category }: UsePortfolioO
     items,
     cityCounts,
     stateCounts,
+    noStateCount,
     cityStates,
     categoryCounts,
     total,

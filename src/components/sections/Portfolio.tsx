@@ -22,6 +22,8 @@ export function Portfolio() {
   const {
     items,
     stateCounts,
+    noStateCount,
+    total,
     hasMore,
     loading,
     loadingMore,
@@ -52,10 +54,14 @@ export function Portfolio() {
     setActiveState(null)
   }, [mediaFilter])
 
-  const totalItemCount = useMemo(
+  const stateAssignedCount = useMemo(
     () => Object.values(stateCounts).reduce((sum, count) => sum + count, 0),
     [stateCounts],
   )
+
+  // All states = assigned states + videos with no state
+  const allStatesCount =
+    activeState === null ? total || stateAssignedCount + noStateCount : stateAssignedCount + noStateCount
 
   const statesWithContent = useMemo(
     () => INDIAN_STATES.filter((state) => (stateCounts[state] ?? 0) > 0),
@@ -64,14 +70,14 @@ export function Portfolio() {
 
   const stateOptions = useMemo(
     () => [
-      { value: '', label: 'All states', count: totalItemCount },
+      { value: '', label: 'All states', count: allStatesCount },
       ...statesWithContent.map((state) => ({
         value: state,
         label: state,
         count: stateCounts[state] ?? 0,
       })),
     ],
-    [stateCounts, statesWithContent, totalItemCount],
+    [allStatesCount, stateCounts, statesWithContent],
   )
 
   const stateSearchEmptyMessage = useCallback(

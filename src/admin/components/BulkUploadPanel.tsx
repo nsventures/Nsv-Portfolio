@@ -48,13 +48,13 @@ const PANEL_COPY: Record<
 > = {
   tour: {
     sheetHint:
-      'For each sheet: optionally choose a state, then attach a CSV/Excel with Name + Link columns. Leave state blank to show in all state filters.',
+      'For each sheet: optionally choose a state, then attach a CSV/Excel with Name + Link columns. Leave state blank to list only under All states.',
     fileHint: 'Name + Link columns (virtual tour URLs)',
     thumbNote: 'Thumbnails: Playwright opens the tour and captures a frame.',
   },
   video: {
     sheetHint:
-      'For each sheet: optionally choose a state, then attach your YouTube CSV (Category + Title + Youtube Link). Leave state blank to show in all state filters.',
+      'For each sheet: optionally choose a state, then attach your YouTube CSV (Category + Title + Youtube Link). Leave state blank to list only under All states.',
     fileHint: 'Builder + Project + City + Category + Youtube Link columns',
     thumbNote: 'Thumbnails: fetched from YouTube (original video poster).',
   },
@@ -302,7 +302,7 @@ export function BulkUploadPanel({ kind, mediaType }: BulkUploadPanelProps) {
                       onChange={(e) => updateBatch(batch.id, { stateId: e.target.value })}
                       className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60"
                     >
-                      <option value="">All states (no filter)</option>
+                      <option value="">No state (All states only)</option>
                       {INDIAN_STATES.map((state) => (
                         <option key={state} value={state}>
                           {state}

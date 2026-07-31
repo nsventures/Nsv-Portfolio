@@ -34,6 +34,8 @@ export interface PortfolioPage {
   categoryCounts: Record<string, number>
   /** State name → count for filter dropdowns */
   stateCounts: Record<string, number>
+  /** Published items with no state (included in All states, not in per-state counts) */
+  noStateCount?: number
   /** City name → state name for cascading filters */
   cityStates: Record<string, string>
 }

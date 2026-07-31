@@ -366,7 +366,7 @@ export function TourFormPage() {
                 <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
                   State
                   <span className="ml-1 font-normal normal-case tracking-normal text-slate/60">
-                    (optional — blank shows in all states)
+                    (optional — blank only in All states)
                   </span>
                 </label>
                 <select

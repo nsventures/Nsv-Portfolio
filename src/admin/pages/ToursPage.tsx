@@ -74,15 +74,7 @@ export function ToursPage() {
         return false
       }
       if (stateFilter === 'none' && t.state) return false
-      // No-state items appear under every specific state filter
-      if (
-        stateFilter !== 'all' &&
-        stateFilter !== 'none' &&
-        t.state &&
-        t.state !== stateFilter
-      ) {
-        return false
-      }
+      if (stateFilter !== 'all' && stateFilter !== 'none' && t.state !== stateFilter) return false
       if (mediaFilter !== 'all' && t.media_type !== mediaFilter) return false
       if (statusFilter === 'published' && !t.is_published) return false
       if (statusFilter === 'draft' && t.is_published) return false

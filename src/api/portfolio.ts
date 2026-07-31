@@ -4,7 +4,7 @@ import { isSupabaseConfigured } from '../lib/supabase'
 import { fetchPortfolioPageFromSupabase } from './portfolio.supabase'
 import type { PortfolioPage, PortfolioQuery, PortfolioViewerPayload } from '../types/portfolio'
 
-export const PORTFOLIO_PAGE_SIZE = 15
+export const PORTFOLIO_PAGE_SIZE = 24
 
 function emptyCityCounts(): Record<string, number> {
   return Object.fromEntries(metroCities.map((city) => [city, 0]))
@@ -46,6 +46,7 @@ async function fetchPortfolioPageEmpty(query: PortfolioQuery): Promise<Portfolio
     cityCounts,
     categoryCounts: {},
     stateCounts: emptyStateCounts(),
+    noStateCount: 0,
     cityStates,
   }
 }
