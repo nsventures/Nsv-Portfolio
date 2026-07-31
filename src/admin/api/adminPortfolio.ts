@@ -90,17 +90,30 @@ export async function updateCityState(id: string, state: string): Promise<void> 
   if (error) throw new Error(error.message)
 }
 
+/** Supabase caps a single query at 1000 rows by default — page past that. */
+const ADMIN_PAGE_SIZE = 1000
+
 export async function fetchAdminTours(): Promise<PortfolioItemRow[]> {
   const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('portfolio_items')
-    .select('*, cities(name)')
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true })
+  const all: PortfolioItemRow[] = []
 
-  if (error) throw new Error(error.message)
-  return (data ?? []) as PortfolioItemRow[]
+  for (let from = 0; ; from += ADMIN_PAGE_SIZE) {
+    const to = from + ADMIN_PAGE_SIZE - 1
+    const { data, error } = await supabase
+      .from('portfolio_items')
+      .select('*, cities(name)')
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to)
+
+    if (error) throw new Error(error.message)
+    const batch = (data ?? []) as PortfolioItemRow[]
+    all.push(...batch)
+    if (batch.length < ADMIN_PAGE_SIZE) break
+  }
+
+  return all
 }
 
 export async function fetchAdminTour(id: string): Promise<PortfolioItemRow | null> {
@@ -117,13 +130,21 @@ export async function fetchAdminTour(id: string): Promise<PortfolioItemRow | nul
 
 export async function fetchPortfolioStats(): Promise<PortfolioStats> {
   const supabase = getSupabase()
-  const { data, error } = await supabase
-    .from('portfolio_items')
-    .select('media_type, is_published')
+  const rows: Pick<PortfolioItemRow, 'media_type' | 'is_published'>[] = []
 
-  if (error) throw new Error(error.message)
+  for (let from = 0; ; from += ADMIN_PAGE_SIZE) {
+    const to = from + ADMIN_PAGE_SIZE - 1
+    const { data, error } = await supabase
+      .from('portfolio_items')
+      .select('media_type, is_published')
+      .range(from, to)
 
-  const rows = (data ?? []) as Pick<PortfolioItemRow, 'media_type' | 'is_published'>[]
+    if (error) throw new Error(error.message)
+    const batch = (data ?? []) as Pick<PortfolioItemRow, 'media_type' | 'is_published'>[]
+    rows.push(...batch)
+    if (batch.length < ADMIN_PAGE_SIZE) break
+  }
+
   return {
     total: rows.length,
     videos: rows.filter((r) => r.media_type === 'video').length,
