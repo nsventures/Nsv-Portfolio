@@ -267,9 +267,10 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
         <div ref={playerTargetRef} />
       </div>
 
-      {/* Frosted strips — hide YouTube title / actions / logo without cropping video */}
+      {/* Soft dark covers — hide YouTube title / logo / more-videos (no cross-origin blur) */}
       <div className="portfolio-youtube-mask portfolio-youtube-mask--top" aria-hidden />
       <div className="portfolio-youtube-mask portfolio-youtube-mask--bottom" aria-hidden />
+      <div className="portfolio-youtube-mask portfolio-youtube-mask--yt-logo" aria-hidden />
 
       <button
         type="button"

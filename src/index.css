@@ -191,96 +191,6 @@
     min-height: 0;
   }
 
-  /* YouTube private player — fit frame (no zoom crop) */
-  .portfolio-youtube-shell {
-    background: #000;
-  }
-
-  .portfolio-youtube-shell:fullscreen,
-  .portfolio-youtube-shell:-webkit-full-screen {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: none;
-    aspect-ratio: auto;
-  }
-
-  .portfolio-youtube-mount {
-    left: 50%;
-    top: 50%;
-    /* transform set in JS: translate(-50%, -50%) scale(...) — contain, no crop */
-    transform-origin: center center;
-    pointer-events: none;
-  }
-
-  .portfolio-youtube-mount iframe {
-    width: 100% !important;
-    height: 100% !important;
-    border: 0;
-    pointer-events: none !important;
-  }
-
-  .portfolio-youtube-mask {
-    position: absolute;
-    z-index: 15;
-    pointer-events: auto;
-  }
-
-  .portfolio-youtube-mask--top {
-    top: 0;
-    left: 0;
-    width: 50%;
-    max-width: 50%;
-    height: 6rem;
-    background: rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(8px) saturate(1.02);
-    -webkit-backdrop-filter: blur(8px) saturate(1.02);
-    mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 100%);
-    -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 45%, transparent 100%);
-  }
-
-  .portfolio-youtube-mask--bottom {
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 5.5rem;
-    background: linear-gradient(
-      0deg,
-      rgba(255, 255, 255, 0.04) 0%,
-      rgba(255, 255, 255, 0.015) 45%,
-      transparent 100%
-    );
-    backdrop-filter: blur(8px) saturate(1.02);
-    -webkit-backdrop-filter: blur(8px) saturate(1.02);
-    mask-image: linear-gradient(0deg, #000 0%, #000 40%, transparent 100%);
-    -webkit-mask-image: linear-gradient(0deg, #000 0%, #000 40%, transparent 100%);
-  }
-
-  .portfolio-youtube-fs-btn {
-    color: #00aeef;
-    background: rgba(0, 0, 0, 0.45);
-    border: 1.5px solid rgba(0, 174, 239, 0.95);
-    box-shadow: 0 0 0 1px rgba(0, 174, 239, 0.15), 0 4px 16px rgba(0, 174, 239, 0.35);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    transition:
-      background-color 0.15s ease,
-      border-color 0.15s ease,
-      box-shadow 0.15s ease,
-      color 0.15s ease;
-  }
-
-  .portfolio-youtube-fs-btn:hover {
-    color: #fff;
-    background: rgba(0, 174, 239, 0.28);
-    border-color: #33c1f4;
-    box-shadow: 0 0 0 1px rgba(0, 174, 239, 0.25), 0 6px 18px rgba(0, 174, 239, 0.45);
-  }
-
-  .portfolio-youtube-fs-btn:focus-visible {
-    outline: 2px solid #00aeef;
-    outline-offset: 2px;
-  }
-
   .portfolio-modal {
     animation: portfolio-modal-fade-in 0.2s ease-out;
   }
@@ -406,6 +316,103 @@
       box-shadow: 0 0 22px rgba(0, 174, 239, 1);
     }
   }
+}
+
+/* Outside @layer so masks always apply in production / fullscreen overlays */
+.portfolio-youtube-shell {
+  background: #000;
+}
+
+.portfolio-youtube-shell:fullscreen,
+.portfolio-youtube-shell:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none;
+  aspect-ratio: auto;
+}
+
+.portfolio-youtube-mount {
+  left: 50%;
+  top: 50%;
+  transform-origin: center center;
+  pointer-events: none;
+}
+
+.portfolio-youtube-mount iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+  pointer-events: none !important;
+}
+
+.portfolio-youtube-mask {
+  position: absolute;
+  z-index: 15;
+  pointer-events: auto;
+}
+
+/* Left → center, 6rem, fades toward bottom (covers YT title on pause) */
+.portfolio-youtube-mask--top {
+  top: 0;
+  left: 0;
+  width: 50%;
+  max-width: 50%;
+  height: 6rem;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.72) 0%,
+    rgba(0, 0, 0, 0.4) 48%,
+    rgba(0, 0, 0, 0.12) 78%,
+    transparent 100%
+  );
+}
+
+/* Full-width bottom — covers YouTube logo + "More videos" strip */
+.portfolio-youtube-mask--bottom {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 5.5rem;
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.78) 0%,
+    rgba(0, 0, 0, 0.45) 42%,
+    rgba(0, 0, 0, 0.12) 78%,
+    transparent 100%
+  );
+}
+
+/* Extra hard cover over YouTube watermark (bottom-right) */
+.portfolio-youtube-mask--yt-logo {
+  right: 0;
+  bottom: 0;
+  width: 8.5rem;
+  height: 3.25rem;
+  background: #000;
+}
+
+.portfolio-youtube-fs-btn {
+  color: #00aeef;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1.5px solid rgba(0, 174, 239, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 174, 239, 0.15), 0 4px 16px rgba(0, 174, 239, 0.35);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease;
+}
+
+.portfolio-youtube-fs-btn:hover {
+  color: #fff;
+  background: rgba(0, 174, 239, 0.28);
+  border-color: #33c1f4;
+  box-shadow: 0 0 0 1px rgba(0, 174, 239, 0.25), 0 6px 18px rgba(0, 174, 239, 0.45);
+}
+
+.portfolio-youtube-fs-btn:focus-visible {
+  outline: 2px solid #00aeef;
+  outline-offset: 2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
