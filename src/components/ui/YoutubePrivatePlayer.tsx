@@ -14,7 +14,7 @@ interface YtPlayer {
 }
 
 const QUALITY_PREFERENCE = ['highres', 'hd1080', 'hd720', 'large', 'medium'] as const
-/** Floor so YouTube ABR prefers HD — scaled to fit (no crop). */
+/** Floor so YouTube ABR prefers HD — scaled to fit (no crop/zoom). */
 const MIN_1080_WIDTH = 1920
 const MIN_1080_HEIGHT = 1080
 
@@ -51,7 +51,7 @@ function requestHighestQuality(player: YtPlayer) {
   }
 }
 
-/** Render ≥1080p 16:9, then CSS-scale to fit the shell (contain — no clipping). */
+/** ≥1080p 16:9 canvas, then CSS-scale to fit the shell (contain — no zoom). */
 function targetPlayerSize(shellWidth: number, shellHeight: number) {
   const byWidth = {
     width: Math.max(MIN_1080_WIDTH, Math.ceil(shellWidth)),
@@ -61,7 +61,6 @@ function targetPlayerSize(shellWidth: number, shellHeight: number) {
     height: Math.max(MIN_1080_HEIGHT, Math.ceil(shellHeight)),
     width: Math.round(Math.max(MIN_1080_HEIGHT, Math.ceil(shellHeight)) * (16 / 9)),
   }
-  // Prefer the canvas that still fits after contain-scale (smaller scale factor wins).
   const scaleW = Math.min(shellWidth / byWidth.width, shellHeight / byWidth.height)
   const scaleH = Math.min(shellWidth / byHeight.width, shellHeight / byHeight.height)
   return scaleW >= scaleH ? byWidth : byHeight
@@ -132,7 +131,7 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
     if (shellW <= 0 || shellH <= 0) return
 
     const { width, height } = targetPlayerSize(shellW, shellH)
-    // Contain: show the full frame (no crop/zoom).
+    // Contain: full frame, no zoom/crop.
     const scale = Math.min(shellW / width, shellH / height)
     mount.style.width = `${width}px`
     mount.style.height = `${height}px`
@@ -267,7 +266,7 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
         <div ref={playerTargetRef} />
       </div>
 
-      {/* Soft dark covers — hide YouTube title / logo / more-videos (no cross-origin blur) */}
+      {/* Short light strips — only cover YT title/logo; edge crop does the rest */}
       <div className="portfolio-youtube-mask portfolio-youtube-mask--top" aria-hidden />
       <div className="portfolio-youtube-mask portfolio-youtube-mask--bottom" aria-hidden />
       <div className="portfolio-youtube-mask portfolio-youtube-mask--yt-logo" aria-hidden />

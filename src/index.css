@@ -351,44 +351,40 @@
   pointer-events: auto;
 }
 
-/* Left → center, 6rem, fades toward bottom (covers YT title on pause) */
+/* Left-half, frost — covers YT title (no heavy black tint, no zoom) */
 .portfolio-youtube-mask--top {
   top: 0;
   left: 0;
   width: 50%;
   max-width: 50%;
   height: 6rem;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.72) 0%,
-    rgba(0, 0, 0, 0.4) 48%,
-    rgba(0, 0, 0, 0.12) 78%,
-    transparent 100%
-  );
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
 }
 
-/* Full-width bottom — covers YouTube logo + "More videos" strip */
+/* Bottom strip — YT logo / actions */
 .portfolio-youtube-mask--bottom {
   left: 0;
   right: 0;
   bottom: 0;
-  height: 5.5rem;
-  background: linear-gradient(
-    0deg,
-    rgba(0, 0, 0, 0.78) 0%,
-    rgba(0, 0, 0, 0.45) 42%,
-    rgba(0, 0, 0, 0.12) 78%,
-    transparent 100%
-  );
+  height: 6rem;
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  mask-image: linear-gradient(0deg, #000 0%, #000 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(0deg, #000 0%, #000 55%, transparent 100%);
 }
 
-/* Extra hard cover over YouTube watermark (bottom-right) */
+/* Small cover over YouTube watermark under the fullscreen btn */
 .portfolio-youtube-mask--yt-logo {
   right: 0;
   bottom: 0;
-  width: 8.5rem;
-  height: 3.25rem;
-  background: #000;
+  width: 7rem;
+  height: 2.75rem;
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .portfolio-youtube-fs-btn {
