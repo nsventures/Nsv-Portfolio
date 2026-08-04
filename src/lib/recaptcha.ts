@@ -10,8 +10,8 @@ export function isRecaptchaConfigured(): boolean {
 declare global {
   interface Window {
     grecaptcha?: {
-      ready: (cb: () => void) => void
-      execute: (siteKey: string, options: { action: string }) => Promise<string>
+      ready?: (cb: () => void) => void
+      execute?: (siteKey: string, options: { action: string }) => Promise<string>
       render?: (...args: unknown[]) => number
       reset?: (widgetId?: number) => void
     }
@@ -22,14 +22,18 @@ const SCRIPT_ID = 'google-recaptcha-v3'
 
 let loadPromise: Promise<void> | null = null
 
+function isGrecaptchaReady(): boolean {
+  const g = window.grecaptcha
+  return typeof g?.ready === 'function' && typeof g.execute === 'function'
+}
+
 function waitForGrecaptchaReady(timeoutMs = 10000): Promise<void> {
   return new Promise((resolve, reject) => {
     const started = Date.now()
 
     const tryReady = () => {
-      const g = window.grecaptcha
-      if (g?.ready && g.execute) {
-        g.ready(() => resolve())
+      if (isGrecaptchaReady()) {
+        window.grecaptcha!.ready!(() => resolve())
         return
       }
       if (Date.now() - started > timeoutMs) {
@@ -48,7 +52,7 @@ export function preloadRecaptcha(): Promise<void> {
   const siteKey = getRecaptchaSiteKey()
   if (!siteKey) return Promise.resolve()
 
-  if (window.grecaptcha?.execute) {
+  if (isGrecaptchaReady()) {
     return waitForGrecaptchaReady()
   }
 
@@ -62,7 +66,7 @@ export function preloadRecaptcha(): Promise<void> {
     }
 
     if (existing) {
-      if (window.grecaptcha?.execute) {
+      if (isGrecaptchaReady()) {
         onReady()
         return
       }
@@ -109,15 +113,15 @@ export async function executeRecaptcha(action: string): Promise<string | null> {
 
   await preloadRecaptcha()
 
-  const grecaptcha = window.grecaptcha
-  if (!grecaptcha?.execute) {
+  if (!isGrecaptchaReady()) {
     throw new Error('Captcha failed to load. Please refresh and try again.')
   }
 
+  const grecaptcha = window.grecaptcha!
   return new Promise((resolve, reject) => {
-    grecaptcha.ready(() => {
+    grecaptcha.ready!(() => {
       grecaptcha
-        .execute(siteKey, { action })
+        .execute!(siteKey, { action })
         .then((token) => resolve(token))
         .catch(() => reject(new Error('Captcha failed. Please try again.')))
     })
