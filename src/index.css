@@ -357,7 +357,7 @@
   left: 0;
   width: 50%;
   max-width: 50%;
-  height: 3rem;
+  height: clamp(3rem, 9vh, 7rem);
   backdrop-filter: blur(9px);
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.03) 65%, transparent 100%);
   mask-image: linear-gradient(180deg, black 0%, black 55%, transparent 100%);
@@ -369,7 +369,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  height: 3rem;
+  height: clamp(3rem, 8vh, 6rem);
   backdrop-filter: blur(9px);
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.09) 0%, rgba(0, 0, 0, 0.03) 65%, transparent 100%);
   mask-image: linear-gradient(0deg, black 0%, black 55%, transparent 100%);
