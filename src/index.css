@@ -13,6 +13,7 @@
   --color-slate: #4a6278;
   --color-slate-light: #7a96ad;
   --color-border: rgba(0, 45, 84, 0.12);
+  --color-gold: #c9a84c;
 
   --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
   --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
@@ -398,6 +399,71 @@
 .portfolio-youtube-fs-btn:focus-visible {
   outline: 2px solid #00aeef;
   outline-offset: 2px;
+}
+
+.portfolio-tour-shell:fullscreen,
+.portfolio-tour-shell:-webkit-full-screen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none;
+  max-height: none;
+}
+
+.portfolio-tour-fs-btn {
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1.5px solid rgba(0, 174, 239, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 174, 239, 0.15), 0 4px 16px rgba(0, 174, 239, 0.35);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.portfolio-tour-fs-btn:hover {
+  color: #fff;
+  background: rgba(0, 174, 239, 0.35);
+  border-color: #33c1f4;
+}
+
+.portfolio-tour-fs-btn:focus-visible {
+  outline: 2px solid #00aeef;
+  outline-offset: 2px;
+}
+
+.hero-stats {
+  background: transparent;
+}
+
+.hero-stats-inner {
+  align-items: start;
+}
+
+.hero-stats-value-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  min-height: 2.75rem;
+}
+
+@media (min-width: 768px) {
+  .hero-stats-value-row {
+    min-height: 3rem;
+  }
+}
+
+.hero-stats-value {
+  color: var(--color-gold);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
+  display: block;
+  line-height: 1 !important;
+  font-size: clamp(1.55rem, 3.4vw, 2.5rem) !important;
+  text-align: center;
+}
+
+.hero-stats-label {
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
 }
 
 @media (prefers-reduced-motion: reduce) {
