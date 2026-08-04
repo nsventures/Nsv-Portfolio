@@ -351,40 +351,44 @@
   pointer-events: auto;
 }
 
-/* Left-half, frost — covers YT title (no heavy black tint, no zoom) */
+/* Left-half, 6rem — soft fade that still hides YT title text (frost alone is invisible on YT iframe) */
 .portfolio-youtube-mask--top {
   top: 0;
   left: 0;
   width: 50%;
   max-width: 50%;
   height: 6rem;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.82) 0%,
+    rgba(0, 0, 0, 0.5) 40%,
+    rgba(0, 0, 0, 0.18) 72%,
+    transparent 100%
+  );
 }
 
-/* Bottom strip — YT logo / actions */
+/* Bottom 6rem — covers logo + more-videos without zooming video */
 .portfolio-youtube-mask--bottom {
   left: 0;
   right: 0;
   bottom: 0;
   height: 6rem;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  mask-image: linear-gradient(0deg, #000 0%, #000 55%, transparent 100%);
-  -webkit-mask-image: linear-gradient(0deg, #000 0%, #000 55%, transparent 100%);
+  background: linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.5) 40%,
+    rgba(0, 0, 0, 0.16) 72%,
+    transparent 100%
+  );
 }
 
-/* Small cover over YouTube watermark under the fullscreen btn */
+/* Hard cover over YouTube watermark under the fullscreen btn */
 .portfolio-youtube-mask--yt-logo {
   right: 0;
   bottom: 0;
-  width: 7rem;
-  height: 2.75rem;
-  background: rgba(0, 0, 0, 0.35);
+  width: 8rem;
+  height: 3rem;
+  background: #000;
 }
 
 .portfolio-youtube-fs-btn {
