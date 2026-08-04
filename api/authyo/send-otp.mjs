@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     res.status(503).json({
       ok: false,
       error:
-        'WhatsApp relay not configured — set OTP_HASH_SECRET, AUTHYO_CLIENT_ID, AUTHYO_CLIENT_SECRET on Vercel (same OTP_HASH_SECRET as Supabase).',
+        'WhatsApp relay  not configured — set OTP_HASH_SECRET, AUTHYO_CLIENT_ID, AUTHYO_CLIENT_SECRET on Vercel (same OTP_HASH_SECRET as Supabase).',
     })
     return
   }
