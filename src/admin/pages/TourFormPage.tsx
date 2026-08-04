@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
-import { inferMediaTypeFromLink } from '../../lib/portfolioLink'
+import { inferMediaTypeFromLink, isYoutubeLink } from '../../lib/portfolioLink'
 import { slugify } from '../../lib/utils'
 import {
   createTour,
@@ -12,6 +12,13 @@ import {
   updateTour,
   uploadTourThumbnail,
 } from '../api/adminPortfolio'
+import {
+  fetchYoutubePreview,
+  fetchYoutubeThumbnailFile,
+  formatYoutubePreviewDate,
+  youtubeThumbPreviewUrl,
+  type YoutubePreviewResult,
+} from '../api/youtubePreview'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
 import { INDIAN_STATES } from '../../data/indianStates'
 import {
@@ -43,17 +50,24 @@ export function TourFormPage() {
   const draftKey = getTourFormDraftKey(isEdit, id)
   const skipNextSave = useRef(true)
   const serverLoaded = useRef(false)
+  const previewRequest = useRef(0)
+  const loadedLinkRef = useRef<string | null>(null)
 
   const [form, setForm] = useState<TourFormValues>(() => {
     if (isEdit) return emptyForm
     return readTourFormDraft(draftKey) ?? emptyForm
   })
   const [existingCategory, setExistingCategory] = useState<string | null>(null)
+  const [existingPublishedAt, setExistingPublishedAt] = useState<string | null>(null)
   const [thumbFile, setThumbFile] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(null)
   const [existingThumb, setExistingThumb] = useState<string | null>(null)
   const [thumbCacheKey, setThumbCacheKey] = useState(0)
   const [thumbUploading, setThumbUploading] = useState(false)
+  const [ytPreview, setYtPreview] = useState<YoutubePreviewResult | null>(null)
+  const [ytLoading, setYtLoading] = useState(false)
+  /** When true, Save will download YouTube poster (unless user picked a file). */
+  const [applyYtThumbOnSave, setApplyYtThumbOnSave] = useState(false)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -123,17 +137,18 @@ export function TourFormPage() {
 
         serverLoaded.current = true
         setExistingCategory(tour.category)
+        setExistingPublishedAt(tour.video_published_at ?? null)
         setForm(
           draft && hasTourFormDraftContent(draft)
             ? {
                 ...draft,
-                // Always keep server position — drafts often default sort_order to 0
                 sort_order: tour.sort_order,
                 media_type: inferMediaTypeFromLink(draft.link || tour.link),
               }
             : loaded,
         )
         setExistingThumb(tour.thumbnail_path)
+        loadedLinkRef.current = tour.link.trim()
         setIdTouched(true)
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load tour'))
@@ -149,6 +164,64 @@ export function TourFormPage() {
     setThumbPreview(url)
     return () => URL.revokeObjectURL(url)
   }, [thumbFile])
+
+  // YouTube poster + publish date — Video only (VR: manual upload or bulk import)
+  useEffect(() => {
+    const link = form.link.trim()
+    const isVideoYt = form.media_type === 'video' && Boolean(link) && isYoutubeLink(link)
+
+    if (!isVideoYt) {
+      setYtPreview(null)
+      setYtLoading(false)
+      setApplyYtThumbOnSave(false)
+      return
+    }
+
+    const instant = youtubeThumbPreviewUrl(link)
+    const linkChanged = !loadedLinkRef.current || loadedLinkRef.current !== link
+    const shouldAutoApplyThumb = !thumbFile && (!existingThumb || linkChanged)
+
+    if (instant) {
+      setYtPreview((prev) =>
+        prev?.thumbnailUrl === instant
+          ? prev
+          : {
+              videoId: prev?.videoId ?? '',
+              publishedAt: prev?.publishedAt ?? null,
+              thumbnailUrl: instant,
+              dateError: prev?.dateError,
+            },
+      )
+      if (shouldAutoApplyThumb) setApplyYtThumbOnSave(true)
+    }
+
+    const reqId = ++previewRequest.current
+    setYtLoading(true)
+    const timer = window.setTimeout(() => {
+      void fetchYoutubePreview(link)
+        .then((result) => {
+          if (previewRequest.current !== reqId) return
+          setYtPreview(result)
+          if (shouldAutoApplyThumb) setApplyYtThumbOnSave(true)
+        })
+        .catch((err) => {
+          if (previewRequest.current !== reqId) return
+          setYtPreview((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  dateError: err instanceof Error ? err.message : 'Preview failed',
+                }
+              : null,
+          )
+        })
+        .finally(() => {
+          if (previewRequest.current === reqId) setYtLoading(false)
+        })
+    }, 450)
+
+    return () => window.clearTimeout(timer)
+  }, [form.link, form.media_type, thumbFile, existingThumb])
 
   const handleProjectNameChange = (projectName: string) => {
     setForm((f) => ({
@@ -171,16 +244,31 @@ export function TourFormPage() {
 
     try {
       let thumbnailPath = existingThumb
+      const link = form.link.trim()
 
       if (thumbFile) {
         thumbnailPath = await uploadTourThumbnail(form.id, thumbFile, existingThumb)
+      } else if (
+        form.media_type === 'video' &&
+        applyYtThumbOnSave &&
+        isYoutubeLink(link)
+      ) {
+        const ytFile = await fetchYoutubeThumbnailFile(link)
+        thumbnailPath = await uploadTourThumbnail(form.id, ytFile, existingThumb)
       }
 
       const projectName = form.project_name.trim()
+      const publishedAt =
+        form.media_type === 'video' && isYoutubeLink(link) && ytPreview?.publishedAt
+          ? ytPreview.publishedAt
+          : form.media_type === 'video'
+            ? existingPublishedAt
+            : null
+
       const payload = {
         id: form.id.trim(),
         name: projectName,
-        link: form.link.trim(),
+        link,
         state: form.state.trim() || null,
         builder_name: form.builder_name.trim() || null,
         project_name: projectName,
@@ -190,11 +278,11 @@ export function TourFormPage() {
         category: existingCategory,
         is_published: form.is_published,
         thumbnail_path: thumbnailPath,
+        video_published_at: publishedAt,
       }
 
       if (isEdit && id) {
         const { id: _omit, ...updates } = payload
-        // Do not send sort_order on edit — keeps drag-reorder position
         await updateTour(id, updates)
         clearTourFormDraft(draftKey)
         navigate(`/admin/tours?focus=${encodeURIComponent(id)}`, { replace: true })
@@ -218,13 +306,19 @@ export function TourFormPage() {
     )
   }
 
+  const ytThumbSrc =
+    applyYtThumbOnSave && !thumbFile && ytPreview?.thumbnailUrl ? ytPreview.thumbnailUrl : null
   const previewSrc =
-    thumbPreview ?? getPortfolioThumbnail(existingThumb, thumbCacheKey || undefined)
-  const hasThumbnail = Boolean(thumbPreview || existingThumb)
+    thumbPreview ?? ytThumbSrc ?? getPortfolioThumbnail(existingThumb, thumbCacheKey || undefined)
+  const hasThumbnail = Boolean(thumbPreview || ytThumbSrc || existingThumb)
+  const publishedLabel =
+    formatYoutubePreviewDate(ytPreview?.publishedAt) ??
+    formatYoutubePreviewDate(existingPublishedAt)
 
   const handleThumbFile = async (file: File | null) => {
     if (!file) return
     setThumbFile(file)
+    setApplyYtThumbOnSave(false)
     setError(null)
 
     if (isEdit && id) {
@@ -256,6 +350,7 @@ export function TourFormPage() {
     setExistingThumb(null)
     setThumbFile(null)
     setThumbPreview(null)
+    setApplyYtThumbOnSave(false)
     setThumbCacheKey(Date.now())
   }
 
@@ -357,8 +452,20 @@ export function TourFormPage() {
                   }))
                 }}
                 className="w-full rounded-xl border border-border bg-off-white px-4 py-3.5 text-navy focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20"
-                placeholder="https://nsventures.in/..."
+                placeholder="https://youtu.be/… or virtual tour URL"
               />
+              {form.media_type === 'video' && isYoutubeLink(form.link) && (
+                <p className="mt-2 text-xs text-slate-light">
+                  YouTube detected — thumbnail and publish date load in the preview (stored when you
+                  click {isEdit ? 'Save changes' : 'Create tour'}).
+                </p>
+              )}
+              {form.media_type === 'virtual-tour' && (
+                <p className="mt-2 text-xs text-slate-light">
+                  Virtual tour — upload a thumbnail manually here, or use Bulk upload to capture
+                  screenshots.
+                </p>
+              )}
             </div>
 
             <div className="grid sm:grid-cols-2 gap-5">
@@ -401,7 +508,8 @@ export function TourFormPage() {
                   <option value="video">Video</option>
                 </select>
                 <p className="mt-2 text-xs text-slate-light">
-                  YouTube links are auto-set to Video.
+                  YouTube links auto-set Video (thumbnail preview). Virtual tour skips auto-fetch —
+                  upload manually or use Bulk upload.
                 </p>
               </div>
             </div>
@@ -440,11 +548,54 @@ export function TourFormPage() {
         <div>
           <AdminCard className="p-6 sticky top-8">
             <p className="text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-4">
-              Thumbnail
+              Preview
             </p>
-            <div className="aspect-[4/3] rounded-xl overflow-hidden bg-navy/5 mb-4">
+            <div className="aspect-[4/3] rounded-xl overflow-hidden bg-navy/5 mb-4 relative">
               <img src={previewSrc} alt="" className="w-full h-full object-cover" />
+              {ytLoading && (
+                <div className="absolute inset-x-0 bottom-0 bg-navy/70 px-3 py-2 text-[11px] font-semibold text-white">
+                  Fetching YouTube details…
+                </div>
+              )}
             </div>
+
+            {(publishedLabel || ytPreview?.dateError || applyYtThumbOnSave) && (
+              <div className="mb-4 rounded-xl border border-border bg-off-white px-3 py-3 text-xs text-navy space-y-1">
+                {publishedLabel ? (
+                  <p>
+                    <span className="text-slate font-semibold uppercase tracking-wider text-[10px]">
+                      Publish date
+                    </span>
+                    <br />
+                    <span className="text-sm font-semibold">{publishedLabel}</span>
+                    {ytPreview?.publishedAt && (
+                      <span className="block text-[11px] text-slate-light mt-0.5">
+                        {new Date(ytPreview.publishedAt).toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </p>
+                ) : ytPreview?.dateError ? (
+                  <p className="text-amber-700">{ytPreview.dateError}</p>
+                ) : null}
+                {applyYtThumbOnSave && !thumbFile && (
+                  <p className="text-slate-light">
+                    YouTube thumbnail ready — applies when you click{' '}
+                    {isEdit ? 'Save changes' : 'Create tour'}.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {ytPreview && !applyYtThumbOnSave && !thumbFile && (
+              <button
+                type="button"
+                onClick={() => setApplyYtThumbOnSave(true)}
+                className="mb-3 w-full rounded-full border border-cyan/40 py-2 text-xs font-semibold text-cyan hover:bg-cyan/10 transition-colors"
+              >
+                Use YouTube thumbnail
+              </button>
+            )}
+
             <label className="block">
               <span className="sr-only">Upload thumbnail</span>
               <input
@@ -460,7 +611,8 @@ export function TourFormPage() {
             )}
             {isEdit && !thumbUploading && (
               <p className="mt-2 text-xs text-slate-light">
-                New image saves immediately on edit.
+                Manual image upload still saves immediately on edit. YouTube fetch waits for Save
+                changes.
               </p>
             )}
             {hasThumbnail && (
@@ -472,7 +624,11 @@ export function TourFormPage() {
                 Remove thumbnail
               </button>
             )}
-            <p className="mt-3 text-xs text-slate-light">JPG, PNG or WebP. Max 5 MB.</p>
+            <p className="mt-3 text-xs text-slate-light">
+              {form.media_type === 'video'
+                ? 'Paste a YouTube link to preview poster + date, or upload JPG/PNG/WebP (max 5 MB).'
+                : 'Upload a thumbnail (JPG/PNG/WebP, max 5 MB). VR screenshots are only via Bulk upload.'}
+            </p>
           </AdminCard>
         </div>
       </motion.form>

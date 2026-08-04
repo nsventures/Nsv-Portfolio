@@ -24,6 +24,8 @@ Marketing website and admin CMS for NS Ventures (real-estate visual production: 
 16. [Troubleshooting](#16-troubleshooting)
 17. [Known gaps](#17-known-gaps)
 
+Related deep-dive: [Bulk Sheet Upload — Full Analysis](./BULK_UPLOAD_ANALYSIS.md) · [Meta + WABA Setup Guide](./META_WABA_SETUP_GUIDE.md)
+
 ---
 
 ## 1. Overview
@@ -385,6 +387,8 @@ Two tabs: **Virtual tours** | **YouTube videos**
 - Insert/update `portfolio_items` via service role
 
 **Requires:** separate import server in production (`VITE_BULK_IMPORT_API_URL`). Local dev uses `npm run dev:all` (Vite proxies to `:3001`).
+
+**Full analysis (all cases, parse rules, skip/update matrix, count gaps, Haryana/promo examples):** see [BULK_UPLOAD_ANALYSIS.md](./BULK_UPLOAD_ANALYSIS.md).
 
 ---
 

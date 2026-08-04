@@ -2,10 +2,16 @@ import http from 'node:http'
 import { createClient } from '@supabase/supabase-js'
 import { sendAuthyoWhatsappOtp } from './lib/authyo-client.mjs'
 import { verifyWhatsappDispatchToken } from './lib/whatsapp-dispatch.mjs'
-import { portfolioIdFromUrl, resolveMediaTypeFromLink, slugFromUrl } from '../scripts/lib/tour-import-utils.mjs'
+import {
+  portfolioIdFromUrl,
+  resolveMediaTypeFromLink,
+  slugFromUrl,
+  youtubeVideoIdFromUrl,
+} from '../scripts/lib/tour-import-utils.mjs'
 import { fetchYoutubeThumbnailBuffer } from '../scripts/lib/youtube-screenshot.mjs'
 import { fetchYoutubeMetadata } from '../scripts/lib/youtube-metadata.mjs'
 import { launchTourBrowser, screenshotTourToBuffer } from '../scripts/lib/tour-screenshot.mjs'
+import { buildYoutubePreview } from './lib/youtube-preview.mjs'
 import {
   compressThumbnailBuffer,
   thumbStoragePath,
@@ -582,6 +588,52 @@ const server = http.createServer(async (req, res) => {
     return
   }
 
+  if (url.pathname === '/api/youtube/preview' && req.method === 'POST') {
+    try {
+      const body = await readJsonBody(req)
+      const link = typeof body?.url === 'string' ? body.url.trim() : ''
+      if (!link) {
+        sendJson(res, 400, { ok: false, error: 'url is required' })
+        return
+      }
+      const result = await buildYoutubePreview(link)
+      sendJson(res, result.ok ? 200 : 400, result)
+    } catch (err) {
+      sendJson(res, 502, {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Preview failed',
+      })
+    }
+    return
+  }
+
+  if (url.pathname === '/api/youtube/thumbnail' && req.method === 'GET') {
+    const link = url.searchParams.get('url')?.trim() || ''
+    const idParam = url.searchParams.get('id')?.trim() || ''
+    const videoId = idParam || (link ? youtubeVideoIdFromUrl(link) : null)
+    if (!videoId) {
+      sendJson(res, 400, { ok: false, error: 'id or url is required' })
+      return
+    }
+    try {
+      const buffer = await fetchYoutubeThumbnailBuffer(
+        link || `https://www.youtube.com/watch?v=${videoId}`,
+      )
+      res.writeHead(200, {
+        'Content-Type': 'image/jpeg',
+        'Cache-Control': 'public, max-age=3600',
+        'Access-Control-Allow-Origin': '*',
+      })
+      res.end(buffer)
+    } catch (err) {
+      sendJson(res, 502, {
+        ok: false,
+        error: err instanceof Error ? err.message : 'Thumbnail fetch failed',
+      })
+    }
+    return
+  }
+
   sendJson(res, 404, { error: 'Not found' })
 })
 
@@ -600,6 +652,8 @@ server.listen(PORT, () => {
   console.log(`  Health:   GET  /api/bulk-import/health`)
   console.log(`  Import:   POST /api/bulk-import`)
   console.log(`  Authyo:   POST /api/authyo/send-otp`)
+  console.log(`  YT preview: POST /api/youtube/preview`)
+  console.log(`  YT thumb:   GET  /api/youtube/thumbnail`)
   if (!serviceRoleKey) {
     console.warn('\n  ⚠ SUPABASE_SERVICE_ROLE_KEY missing — add it to .env.local\n')
   } else {

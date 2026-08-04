@@ -20,6 +20,7 @@ export interface PortfolioItemRow {
   category: string | null
   is_published: boolean
   sort_order: number
+  video_published_at?: string | null
   created_at?: string
   updated_at?: string
   cities?: { name: string } | null
