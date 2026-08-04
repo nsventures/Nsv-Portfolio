@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_IS_PRODUCTION?: string
   /** Optional override for /admin gate password (default: nsv@1234 when VITE_IS_PRODUCTION is true) */
   readonly VITE_ADMIN_GATE_PASSWORD?: string
+  /** Google reCAPTCHA v2 checkbox site key (public) */
+  readonly VITE_RECAPTCHA_SITE_KEY?: string
 }
 
 interface ImportMeta {

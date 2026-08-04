@@ -6,6 +6,7 @@ export interface PortfolioOtpSendPayload {
   phone: string
   projectName?: string | null
   siteOrigin?: string
+  captchaToken?: string | null
 }
 
 export interface PortfolioOtpSendResult {

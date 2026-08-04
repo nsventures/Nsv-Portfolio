@@ -3,10 +3,12 @@ import { createPortal } from 'react-dom'
 import { submitPortfolioCallback } from '../../api/portfolioCallback'
 import { DEFAULT_PHONE_COUNTRY, findPhoneCountry } from '../../data/phoneCountries'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
+import { isRecaptchaConfigured } from '../../lib/recaptcha'
 import { parseE164Phone, toE164, validateNationalNumber } from '../../lib/phone'
 import { cn } from '../../lib/utils'
 import { Logo } from './Logo'
 import { PhoneInput } from './PhoneInput'
+import { RecaptchaCheckbox, resetRecaptcha } from './RecaptchaCheckbox'
 
 interface PortfolioCallbackModalProps {
   initialName?: string
@@ -35,6 +37,7 @@ export function PortfolioCallbackModal({
     phone: parsedInitialPhone.nationalNumber,
     message: '',
   })
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
@@ -70,6 +73,11 @@ export function PortfolioCallbackModal({
       return
     }
 
+    if (isRecaptchaConfigured() && !captchaToken) {
+      setError('Please complete the captcha')
+      return
+    }
+
     setSubmitting(true)
     setError(null)
     setPhoneError(null)
@@ -80,10 +88,13 @@ export function PortfolioCallbackModal({
         phone: toE164(country, data.phone),
         message: data.message || null,
         projectName,
+        captchaToken,
       })
       setSent(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send request')
+      resetRecaptcha()
+      setCaptchaToken(null)
     } finally {
       setSubmitting(false)
     }
@@ -193,6 +204,15 @@ export function PortfolioCallbackModal({
                   placeholder="Best time to call, project details…"
                 />
               </div>
+
+              {isRecaptchaConfigured() && (
+                <RecaptchaCheckbox
+                  onChange={(token) => {
+                    setCaptchaToken(token)
+                    if (token) setError(null)
+                  }}
+                />
+              )}
 
               {error && <p className="text-center text-xs text-red-500">{error}</p>}
 

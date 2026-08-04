@@ -6,12 +6,14 @@ import {
   normalizePhoneE164,
   sendCallbackRequestEmail,
 } from '../_shared/portfolio-otp.ts'
+import { verifyRecaptchaV2 } from '../_shared/recaptcha.ts'
 
 interface CallbackBody {
   name?: string
   phone?: string
   message?: string | null
   projectName?: string | null
+  captchaToken?: string | null
 }
 
 Deno.serve(async (req) => {
@@ -33,6 +35,9 @@ Deno.serve(async (req) => {
     if (!name) return errorResponse('Name is required')
     if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
 
+    const captcha = await verifyRecaptchaV2(body.captchaToken)
+    if (!captcha.ok) return errorResponse(captcha.error, 400)
+
     const supabase = createServiceClient()
     const { error: inquiryError } = await supabase.from('inquiries').insert({
       name,
@@ -53,7 +58,8 @@ Deno.serve(async (req) => {
     try {
       await sendCallbackRequestEmail({ name, phone: phoneE164, message, projectName })
     } catch (emailErr) {
-      const emailMessage = emailErr instanceof Error ? emailErr.message : 'Failed to send notification email'
+      const emailMessage =
+        emailErr instanceof Error ? emailErr.message : 'Failed to send notification email'
       console.error('[portfolio-callback] notification email failed:', emailMessage)
     }
 

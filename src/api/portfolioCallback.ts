@@ -6,6 +6,7 @@ export interface PortfolioCallbackPayload {
   phone: string
   message?: string | null
   projectName?: string | null
+  captchaToken?: string | null
 }
 
 type EdgeErr = { ok: false; error: string }
