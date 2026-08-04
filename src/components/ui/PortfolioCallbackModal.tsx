@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { submitPortfolioCallback } from '../../api/portfolioCallback'
 import { DEFAULT_PHONE_COUNTRY, findPhoneCountry } from '../../data/phoneCountries'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
-import { executeRecaptcha, isRecaptchaConfigured } from '../../lib/recaptcha'
+import { executeRecaptcha, isRecaptchaConfigured, preloadRecaptcha } from '../../lib/recaptcha'
 import { parseE164Phone, toE164, validateNationalNumber } from '../../lib/phone'
 import { cn } from '../../lib/utils'
 import { Logo } from './Logo'
@@ -43,6 +43,9 @@ export function PortfolioCallbackModal({
 
   useEffect(() => {
     pauseSmoothScroll()
+    void preloadRecaptcha().catch(() => {
+      // First click will retry; avoid noisy UI on open
+    })
     return () => resumeSmoothScroll()
   }, [])
 

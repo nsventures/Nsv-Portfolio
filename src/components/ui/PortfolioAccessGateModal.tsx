@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { sendPortfolioOtp, verifyPortfolioOtp } from '../../api/portfolioOtp'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { savePortfolioAccess } from '../../lib/portfolioAccess'
-import { executeRecaptcha, isRecaptchaConfigured } from '../../lib/recaptcha'
+import { executeRecaptcha, isRecaptchaConfigured, preloadRecaptcha } from '../../lib/recaptcha'
 import { DEFAULT_PHONE_COUNTRY, findPhoneCountry } from '../../data/phoneCountries'
 import { toE164, validateNationalNumber } from '../../lib/phone'
 import { cn } from '../../lib/utils'
@@ -69,6 +69,9 @@ export function PortfolioAccessGateModal({
   const [resendIn, setResendIn] = useState(0)
   useEffect(() => {
     pauseSmoothScroll()
+    void preloadRecaptcha().catch(() => {
+      // First click will retry; avoid noisy UI on open
+    })
     return () => resumeSmoothScroll()
   }, [])
 

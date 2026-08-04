@@ -20,44 +20,94 @@ declare global {
 
 const SCRIPT_ID = 'google-recaptcha-v3'
 
-function loadRecaptchaV3(siteKey: string): Promise<void> {
-  if (window.grecaptcha?.execute) return Promise.resolve()
+let loadPromise: Promise<void> | null = null
 
-  const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
-  if (existing) {
-    return new Promise((resolve, reject) => {
-      if (window.grecaptcha?.execute) {
-        resolve()
+function waitForGrecaptchaReady(timeoutMs = 10000): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const started = Date.now()
+
+    const tryReady = () => {
+      const g = window.grecaptcha
+      if (g?.ready && g.execute) {
+        g.ready(() => resolve())
         return
       }
-      existing.addEventListener('load', () => resolve(), { once: true })
-      existing.addEventListener('error', () => reject(new Error('Failed to load captcha')), {
-        once: true,
-      })
-    })
+      if (Date.now() - started > timeoutMs) {
+        reject(new Error('Captcha failed to load. Please refresh and try again.'))
+        return
+      }
+      window.setTimeout(tryReady, 50)
+    }
+
+    tryReady()
+  })
+}
+
+/** Load the v3 script once and wait until grecaptcha.execute is ready. */
+export function preloadRecaptcha(): Promise<void> {
+  const siteKey = getRecaptchaSiteKey()
+  if (!siteKey) return Promise.resolve()
+
+  if (window.grecaptcha?.execute) {
+    return waitForGrecaptchaReady()
   }
 
-  return new Promise((resolve, reject) => {
+  if (loadPromise) return loadPromise
+
+  loadPromise = new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null
+
+    const onReady = () => {
+      waitForGrecaptchaReady().then(resolve).catch(reject)
+    }
+
+    if (existing) {
+      if (window.grecaptcha?.execute) {
+        onReady()
+        return
+      }
+      existing.addEventListener('load', onReady, { once: true })
+      existing.addEventListener(
+        'error',
+        () => {
+          loadPromise = null
+          reject(new Error('Failed to load captcha'))
+        },
+        { once: true },
+      )
+      // Script may already be loaded but grecaptcha not yet attached
+      onReady()
+      return
+    }
+
     const script = document.createElement('script')
     script.id = SCRIPT_ID
     script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(siteKey)}`
     script.async = true
     script.defer = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error('Failed to load captcha'))
+    script.onload = onReady
+    script.onerror = () => {
+      loadPromise = null
+      reject(new Error('Failed to load captcha'))
+    }
     document.head.appendChild(script)
+  }).catch((err) => {
+    loadPromise = null
+    throw err
   })
+
+  return loadPromise
 }
 
 /**
  * Run invisible reCAPTCHA v3 and return a one-time token.
- * Returns null if site key is missing; throws if Google script/execute fails.
+ * Returns null if site key is missing.
  */
 export async function executeRecaptcha(action: string): Promise<string | null> {
   const siteKey = getRecaptchaSiteKey()
   if (!siteKey) return null
 
-  await loadRecaptchaV3(siteKey)
+  await preloadRecaptcha()
 
   const grecaptcha = window.grecaptcha
   if (!grecaptcha?.execute) {
