@@ -266,10 +266,9 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
         <div ref={playerTargetRef} />
       </div>
 
-      {/* Short light strips — only cover YT title/logo; edge crop does the rest */}
+      {/* Light edge covers for YT chrome only */}
       <div className="portfolio-youtube-mask portfolio-youtube-mask--top" aria-hidden />
       <div className="portfolio-youtube-mask portfolio-youtube-mask--bottom" aria-hidden />
-      <div className="portfolio-youtube-mask portfolio-youtube-mask--yt-logo" aria-hidden />
 
       <button
         type="button"
@@ -280,7 +279,7 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
 
       <button
         type="button"
-        className="portfolio-youtube-fs-btn absolute bottom-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-lg"
+        className="portfolio-youtube-fs-btn absolute bottom-2.5 right-2.5 z-20 flex h-11 w-11 items-center justify-center rounded-lg"
         aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
         onClick={(e) => {
           e.stopPropagation()
