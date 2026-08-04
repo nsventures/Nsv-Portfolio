@@ -8,7 +8,7 @@ import {
   maskPhone,
   normalizePhoneE164,
 } from '../_shared/portfolio-otp.ts'
-import { verifyRecaptchaV2 } from '../_shared/recaptcha.ts'
+import { verifyRecaptchaV3 } from '../_shared/recaptcha.ts'
 import { createWhatsappDispatchToken } from '../_shared/whatsapp-dispatch.ts'
 
 const OTP_TTL_SECONDS = 300
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     if (!name) return errorResponse('Name is required')
     if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
 
-    const captcha = await verifyRecaptchaV2(body.captchaToken)
+    const captcha = await verifyRecaptchaV3(body.captchaToken, 'portfolio_otp')
     if (!captcha.ok) return errorResponse(captcha.error, 400)
 
     const supabase = createServiceClient()

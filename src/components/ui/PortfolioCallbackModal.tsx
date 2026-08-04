@@ -3,12 +3,11 @@ import { createPortal } from 'react-dom'
 import { submitPortfolioCallback } from '../../api/portfolioCallback'
 import { DEFAULT_PHONE_COUNTRY, findPhoneCountry } from '../../data/phoneCountries'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
-import { isRecaptchaConfigured } from '../../lib/recaptcha'
+import { executeRecaptcha, isRecaptchaConfigured } from '../../lib/recaptcha'
 import { parseE164Phone, toE164, validateNationalNumber } from '../../lib/phone'
 import { cn } from '../../lib/utils'
 import { Logo } from './Logo'
 import { PhoneInput } from './PhoneInput'
-import { RecaptchaCheckbox, resetRecaptcha } from './RecaptchaCheckbox'
 
 interface PortfolioCallbackModalProps {
   initialName?: string
@@ -37,7 +36,6 @@ export function PortfolioCallbackModal({
     phone: parsedInitialPhone.nationalNumber,
     message: '',
   })
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
@@ -73,16 +71,20 @@ export function PortfolioCallbackModal({
       return
     }
 
-    if (isRecaptchaConfigured() && !captchaToken) {
-      setError('Please complete the captcha')
-      return
-    }
-
     setSubmitting(true)
     setError(null)
     setPhoneError(null)
 
     try {
+      let captchaToken: string | null = null
+      if (isRecaptchaConfigured()) {
+        captchaToken = await executeRecaptcha('portfolio_callback')
+        if (!captchaToken) {
+          setError('Security check failed. Please try again.')
+          return
+        }
+      }
+
       await submitPortfolioCallback({
         name: data.name,
         phone: toE164(country, data.phone),
@@ -93,8 +95,6 @@ export function PortfolioCallbackModal({
       setSent(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send request')
-      resetRecaptcha()
-      setCaptchaToken(null)
     } finally {
       setSubmitting(false)
     }
@@ -205,15 +205,6 @@ export function PortfolioCallbackModal({
                 />
               </div>
 
-              {isRecaptchaConfigured() && (
-                <RecaptchaCheckbox
-                  onChange={(token) => {
-                    setCaptchaToken(token)
-                    if (token) setError(null)
-                  }}
-                />
-              )}
-
               {error && <p className="text-center text-xs text-red-500">{error}</p>}
 
               <button
@@ -223,6 +214,29 @@ export function PortfolioCallbackModal({
               >
                 {submitting ? 'Sending…' : 'Request Callback'}
               </button>
+              {isRecaptchaConfigured() && (
+                <p className="text-center text-[10px] text-slate-light leading-relaxed">
+                  This site is protected by reCAPTCHA and the Google{' '}
+                  <a
+                    href="https://policies.google.com/privacy"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-slate"
+                  >
+                    Privacy Policy
+                  </a>{' '}
+                  and{' '}
+                  <a
+                    href="https://policies.google.com/terms"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-slate"
+                  >
+                    Terms of Service
+                  </a>{' '}
+                  apply.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={onClose}

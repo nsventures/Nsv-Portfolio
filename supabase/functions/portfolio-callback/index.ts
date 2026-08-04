@@ -6,7 +6,7 @@ import {
   normalizePhoneE164,
   sendCallbackRequestEmail,
 } from '../_shared/portfolio-otp.ts'
-import { verifyRecaptchaV2 } from '../_shared/recaptcha.ts'
+import { verifyRecaptchaV3 } from '../_shared/recaptcha.ts'
 
 interface CallbackBody {
   name?: string
@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     if (!name) return errorResponse('Name is required')
     if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
 
-    const captcha = await verifyRecaptchaV2(body.captchaToken)
+    const captcha = await verifyRecaptchaV3(body.captchaToken, 'portfolio_callback')
     if (!captcha.ok) return errorResponse(captcha.error, 400)
 
     const supabase = createServiceClient()

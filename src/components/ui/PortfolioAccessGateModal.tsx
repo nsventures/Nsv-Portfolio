@@ -3,14 +3,13 @@ import { createPortal } from 'react-dom'
 import { sendPortfolioOtp, verifyPortfolioOtp } from '../../api/portfolioOtp'
 import { pauseSmoothScroll, resumeSmoothScroll } from '../../lib/lenisControl'
 import { savePortfolioAccess } from '../../lib/portfolioAccess'
-import { isRecaptchaConfigured } from '../../lib/recaptcha'
+import { executeRecaptcha, isRecaptchaConfigured } from '../../lib/recaptcha'
 import { DEFAULT_PHONE_COUNTRY, findPhoneCountry } from '../../data/phoneCountries'
 import { toE164, validateNationalNumber } from '../../lib/phone'
 import { cn } from '../../lib/utils'
 import { Logo } from './Logo'
 import { OtpInput } from './OtpInput'
 import { PhoneInput } from './PhoneInput'
-import { RecaptchaCheckbox, resetRecaptcha } from './RecaptchaCheckbox'
 
 interface PortfolioAccessGateModalProps {
   pendingProjectName?: string | null
@@ -33,15 +32,12 @@ interface FormErrors {
   submit?: string
 }
 
-function validateDetails(data: FormState, captchaToken: string | null): FormErrors {
+function validateDetails(data: FormState): FormErrors {
   const errors: FormErrors = {}
   if (!data.name.trim()) errors.name = 'Name is required'
   const country = findPhoneCountry(data.countryCode)
   const phoneError = validateNationalNumber(country, data.phone)
   if (phoneError) errors.phone = phoneError
-  if (isRecaptchaConfigured() && !captchaToken) {
-    errors.captcha = 'Please complete the captcha'
-  }
   return errors
 }
 
@@ -68,7 +64,6 @@ export function PortfolioAccessGateModal({
   })
   const [otp, setOtp] = useState('')
   const [phoneMasked, setPhoneMasked] = useState('')
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [resendIn, setResendIn] = useState(0)
@@ -96,7 +91,7 @@ export function PortfolioAccessGateModal({
     )
 
   const sendOtp = async () => {
-    const nextErrors = validateDetails(data, captchaToken)
+    const nextErrors = validateDetails(data)
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
       return
@@ -106,6 +101,15 @@ export function PortfolioAccessGateModal({
     setErrors({})
 
     try {
+      let captchaToken: string | null = null
+      if (isRecaptchaConfigured()) {
+        captchaToken = await executeRecaptcha('portfolio_otp')
+        if (!captchaToken) {
+          setErrors({ submit: 'Security check failed. Please try again.' })
+          return
+        }
+      }
+
       const result = await sendPortfolioOtp({
         name: data.name,
         phone: toE164(findPhoneCountry(data.countryCode), data.phone),
@@ -115,8 +119,6 @@ export function PortfolioAccessGateModal({
 
       if (!result.whatsappSent) {
         setErrors({ submit: whatsappFailureMessage(result.whatsappError ?? null) })
-        resetRecaptcha()
-        setCaptchaToken(null)
         return
       }
 
@@ -124,14 +126,10 @@ export function PortfolioAccessGateModal({
       setResendIn(60)
       setOtp('')
       setStep('otp')
-      resetRecaptcha()
-      setCaptchaToken(null)
     } catch (err) {
       setErrors({
         submit: err instanceof Error ? err.message : 'Could not send verification code',
       })
-      resetRecaptcha()
-      setCaptchaToken(null)
     } finally {
       setSubmitting(false)
     }
@@ -264,26 +262,6 @@ export function PortfolioAccessGateModal({
                   />
                 </div>
 
-                {isRecaptchaConfigured() && (
-                  <div>
-                    <RecaptchaCheckbox
-                      onChange={(token) => {
-                        setCaptchaToken(token)
-                        if (token) {
-                          setErrors((prev) => ({
-                            ...prev,
-                            captcha: undefined,
-                            submit: undefined,
-                          }))
-                        }
-                      }}
-                    />
-                    {errors.captcha && (
-                      <p className="mt-1.5 text-center text-xs text-red-500">{errors.captcha}</p>
-                    )}
-                  </div>
-                )}
-
                 {errors.submit && (
                   <p className="rounded-lg bg-red-50 px-3 py-2 text-center text-xs text-red-600">
                     {errors.submit}
@@ -297,6 +275,29 @@ export function PortfolioAccessGateModal({
                 >
                   {submitting ? 'Sending Code…' : 'Send Verification Code'}
                 </button>
+                {isRecaptchaConfigured() && (
+                  <p className="text-center text-[10px] text-slate-light leading-relaxed">
+                    This site is protected by reCAPTCHA and the Google{' '}
+                    <a
+                      href="https://policies.google.com/privacy"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-slate"
+                    >
+                      Privacy Policy
+                    </a>{' '}
+                    and{' '}
+                    <a
+                      href="https://policies.google.com/terms"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline hover:text-slate"
+                    >
+                      Terms of Service
+                    </a>{' '}
+                    apply.
+                  </p>
+                )}
               </form>
             ) : (
               <form onSubmit={handleOtpSubmit} className="space-y-5">
@@ -335,23 +336,6 @@ export function PortfolioAccessGateModal({
                 </button>
 
                 <div className="flex flex-col items-center gap-3 text-xs">
-                  {isRecaptchaConfigured() && resendIn <= 0 && (
-                    <RecaptchaCheckbox
-                      onChange={(token) => {
-                        setCaptchaToken(token)
-                        if (token) {
-                          setErrors((prev) => ({
-                            ...prev,
-                            captcha: undefined,
-                            submit: undefined,
-                          }))
-                        }
-                      }}
-                    />
-                  )}
-                  {errors.captcha && (
-                    <p className="text-center text-xs text-red-500">{errors.captcha}</p>
-                  )}
                   <button
                     type="button"
                     disabled={submitting || resendIn > 0}
