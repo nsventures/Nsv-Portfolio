@@ -3,7 +3,16 @@ export function getRecaptchaSiteKey(): string | null {
   return key || null
 }
 
+function isLocalHostname(): boolean {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host === 'localhost' || host === '127.0.0.1'
+}
+
+/** True when captcha should run (disabled on localhost / via VITE_SKIP_RECAPTCHA). */
 export function isRecaptchaConfigured(): boolean {
+  if (import.meta.env.VITE_SKIP_RECAPTCHA === 'true') return false
+  if (isLocalHostname()) return false
   return Boolean(getRecaptchaSiteKey())
 }
 

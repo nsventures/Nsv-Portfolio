@@ -1,14 +1,23 @@
 /**
  * Verify a Google reCAPTCHA v3 token with Google's siteverify API.
  * If RECAPTCHA_SECRET_KEY is unset, verification is skipped (local/dev convenience).
+ * Localhost / 127.0.0.1 origins skip verification (local Vite → cloud edges).
  *
  * Optional env:
  *   RECAPTCHA_MIN_SCORE — default 0.5 (0.0 = bot, 1.0 = human)
+ *   RECAPTCHA_FORCE — set to "true" to require captcha even on localhost
  */
 export async function verifyRecaptchaV3(
   token: string | null | undefined,
   expectedAction?: string,
+  req?: Request,
 ): Promise<{ ok: true; score?: number } | { ok: false; error: string }> {
+  const force = Deno.env.get('RECAPTCHA_FORCE')?.trim() === 'true'
+  if (!force && req && isLocalDevOrigin(req)) {
+    console.warn('[recaptcha] skipping verification for local origin')
+    return { ok: true }
+  }
+
   const secret = Deno.env.get('RECAPTCHA_SECRET_KEY')?.trim() ?? ''
 
   if (!secret) {
@@ -62,6 +71,19 @@ export async function verifyRecaptchaV3(
   }
 
   return { ok: true, score }
+}
+
+function isLocalDevOrigin(req: Request): boolean {
+  const origin = req.headers.get('origin') ?? ''
+  if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return true
+
+  const referer = req.headers.get('referer') ?? ''
+  try {
+    const host = new URL(referer).hostname
+    return host === 'localhost' || host === '127.0.0.1'
+  } catch {
+    return false
+  }
 }
 
 /** @deprecated Use verifyRecaptchaV3 */

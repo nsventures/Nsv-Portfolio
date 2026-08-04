@@ -7,21 +7,40 @@ interface YtPlayer {
   destroy: () => void
   setSize: (width: number, height: number) => void
   setPlaybackQuality: (quality: string) => void
+  setPlaybackQualityRange?: (min: string, max: string) => void
   getAvailableQualityLevels: () => string[]
+  unloadModule?: (module: string) => void
+  setOption?: (module: string, option: string, value: unknown) => void
 }
 
-const QUALITY_PREFERENCE = ['hd1080', 'hd720', 'large', 'medium'] as const
+const QUALITY_PREFERENCE = ['highres', 'hd1080', 'hd720', 'large', 'medium'] as const
+/** Floor so YouTube ABR prefers HD — scaled to fit (no crop). */
 const MIN_1080_WIDTH = 1920
 const MIN_1080_HEIGHT = 1080
-const CROP_SCALE = 1.12
+
+function suppressCaptions(player: YtPlayer) {
+  try {
+    player.unloadModule?.('captions')
+    player.unloadModule?.('cc')
+    player.setOption?.('captions', 'track', {})
+  } catch {
+    // Modules may be unavailable until API change fires
+  }
+}
 
 function requestHighestQuality(player: YtPlayer) {
+  try {
+    player.setPlaybackQualityRange?.('hd1080', 'highres')
+  } catch {
+    // Optional API
+  }
+
   try {
     const available = player.getAvailableQualityLevels()
     const pick =
       QUALITY_PREFERENCE.find((q) => available.includes(q)) ??
-      available[available.length - 1] ??
-      'default'
+      available[0] ??
+      'hd1080'
     player.setPlaybackQuality(pick)
   } catch {
     try {
@@ -32,22 +51,20 @@ function requestHighestQuality(player: YtPlayer) {
   }
 }
 
+/** Render ≥1080p 16:9, then CSS-scale to fit the shell (contain — no clipping). */
 function targetPlayerSize(shellWidth: number, shellHeight: number) {
-  const croppedW = Math.ceil(shellWidth * CROP_SCALE)
-  const croppedH = Math.ceil(shellHeight * CROP_SCALE)
-
-  // YouTube picks stream quality from player pixel size — target 1080p.
-  let width = Math.max(croppedW, MIN_1080_WIDTH)
-  let height = Math.max(croppedH, MIN_1080_HEIGHT)
-
-  const shellRatio = shellWidth / shellHeight
-  if (width / height > shellRatio) {
-    width = Math.ceil(height * shellRatio)
-  } else {
-    height = Math.ceil(width / shellRatio)
+  const byWidth = {
+    width: Math.max(MIN_1080_WIDTH, Math.ceil(shellWidth)),
+    height: Math.round(Math.max(MIN_1080_WIDTH, Math.ceil(shellWidth)) * (9 / 16)),
   }
-
-  return { width, height }
+  const byHeight = {
+    height: Math.max(MIN_1080_HEIGHT, Math.ceil(shellHeight)),
+    width: Math.round(Math.max(MIN_1080_HEIGHT, Math.ceil(shellHeight)) * (16 / 9)),
+  }
+  // Prefer the canvas that still fits after contain-scale (smaller scale factor wins).
+  const scaleW = Math.min(shellWidth / byWidth.width, shellHeight / byWidth.height)
+  const scaleH = Math.min(shellWidth / byHeight.width, shellHeight / byHeight.height)
+  return scaleW >= scaleH ? byWidth : byHeight
 }
 
 declare global {
@@ -98,39 +115,54 @@ interface YoutubePrivatePlayerProps {
 export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivatePlayerProps) {
   const shellRef = useRef<HTMLDivElement>(null)
   const mountRef = useRef<HTMLDivElement>(null)
+  const playerTargetRef = useRef<HTMLDivElement>(null)
   const playerRef = useRef<YtPlayer | null>(null)
   const onReadyRef = useRef(onReady)
   const [isFullscreen, setIsFullscreen] = useState(false)
-  const [isPlaying, setIsPlaying] = useState(false)
   onReadyRef.current = onReady
 
   const syncPlayerSize = useCallback(() => {
     const shell = shellRef.current
+    const mount = mountRef.current
     const player = playerRef.current
-    if (!shell || !player) return
+    if (!shell || !mount || !player) return
 
-    // Oversize + 1080p floor so YouTube serves HD and chrome sits outside crop.
-    const { width, height } = targetPlayerSize(shell.clientWidth, shell.clientHeight)
-    if (width > 0 && height > 0) {
-      player.setSize(width, height)
-      requestHighestQuality(player)
-    }
+    const shellW = shell.clientWidth
+    const shellH = shell.clientHeight
+    if (shellW <= 0 || shellH <= 0) return
+
+    const { width, height } = targetPlayerSize(shellW, shellH)
+    // Contain: show the full frame (no crop/zoom).
+    const scale = Math.min(shellW / width, shellH / height)
+    mount.style.width = `${width}px`
+    mount.style.height = `${height}px`
+    mount.style.transform = `translate(-50%, -50%) scale(${scale})`
+    player.setSize(width, height)
+    requestHighestQuality(player)
   }, [])
 
   useEffect(() => {
+    const target = playerTargetRef.current
     const mount = mountRef.current
     const shell = shellRef.current
-    if (!mount || !shell || !videoId) return
+    if (!target || !mount || !shell || !videoId) return
 
     let cancelled = false
     let resizeObserver: ResizeObserver | undefined
 
     void loadYoutubeIframeApi().then(() => {
-      if (cancelled || !mountRef.current || !window.YT?.Player) return
+      if (cancelled || !playerTargetRef.current || !window.YT?.Player) return
 
-      const { width, height } = targetPlayerSize(shell.clientWidth || 640, shell.clientHeight || 360)
+      const shellW = shell.clientWidth || 640
+      const shellH = shell.clientHeight || 360
+      const { width, height } = targetPlayerSize(shellW, shellH)
+      const scale = Math.min(shellW / width, shellH / height)
+      mount.style.width = `${width}px`
+      mount.style.height = `${height}px`
+      mount.style.transform = `translate(-50%, -50%) scale(${scale})`
 
-      playerRef.current = new window.YT.Player(mountRef.current, {
+      // Inner node is replaced by YT iframe; outer mount keeps sizing.
+      playerRef.current = new window.YT.Player(playerTargetRef.current, {
         videoId,
         width,
         height,
@@ -153,9 +185,11 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
           onReady: (event: { target: YtPlayer }) => {
             if (cancelled) return
             playerRef.current = event.target
+            suppressCaptions(event.target)
             requestAnimationFrame(() => {
               syncPlayerSize()
               requestHighestQuality(event.target)
+              suppressCaptions(event.target)
               onReadyRef.current()
             })
           },
@@ -166,12 +200,13 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
               event.data === YT.PlayerState.PLAYING ||
               event.data === YT.PlayerState.BUFFERING
             ) {
-              setIsPlaying(true)
+              suppressCaptions(event.target)
               requestHighestQuality(event.target)
               syncPlayerSize()
-            } else {
-              setIsPlaying(false)
             }
+          },
+          onApiChange: (event: { target: YtPlayer }) => {
+            suppressCaptions(event.target)
           },
         },
       })
@@ -228,9 +263,11 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
       ref={shellRef}
       className="portfolio-youtube-shell relative w-full aspect-video overflow-hidden bg-black"
     >
-      <div ref={mountRef} className="portfolio-youtube-mount absolute" title="" />
+      <div ref={mountRef} className="portfolio-youtube-mount absolute" title="">
+        <div ref={playerTargetRef} />
+      </div>
 
-      {/* Frosted masks — hide YouTube title, channel link, share & logo */}
+      {/* Frosted strips — hide YouTube title / actions / logo without cropping video */}
       <div className="portfolio-youtube-mask portfolio-youtube-mask--top" aria-hidden />
       <div className="portfolio-youtube-mask portfolio-youtube-mask--bottom" aria-hidden />
 
@@ -241,22 +278,9 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
         onClick={togglePlayback}
       />
 
-      {!isPlaying && (
-        <div
-          className="pointer-events-none absolute inset-0 z-[12] flex items-center justify-center"
-          aria-hidden
-        >
-          <div className="portfolio-youtube-play-badge flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" className="ml-1 text-white">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </div>
-      )}
-
       <button
         type="button"
-        className="absolute bottom-2.5 right-2.5 z-20 flex h-9 w-9 items-center justify-center rounded-md bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+        className="portfolio-youtube-fs-btn absolute bottom-3 right-3 z-20 flex h-10 w-10 items-center justify-center rounded-lg"
         aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
         onClick={(e) => {
           e.stopPropagation()
@@ -268,7 +292,7 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
             <path
               d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"
               stroke="currentColor"
-              strokeWidth="1.75"
+              strokeWidth="2"
               strokeLinecap="round"
             />
           </svg>
@@ -277,7 +301,7 @@ export function YoutubePrivatePlayer({ videoId, title, onReady }: YoutubePrivate
             <path
               d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"
               stroke="currentColor"
-              strokeWidth="1.75"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
             />

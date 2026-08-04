@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     if (!name) return errorResponse('Name is required')
     if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
 
-    const captcha = await verifyRecaptchaV3(body.captchaToken, 'portfolio_callback')
+    const captcha = await verifyRecaptchaV3(body.captchaToken, 'portfolio_callback', req)
     if (!captcha.ok) return errorResponse(captcha.error, 400)
 
     const supabase = createServiceClient()
