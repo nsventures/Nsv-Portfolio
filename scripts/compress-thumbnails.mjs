@@ -49,6 +49,10 @@ async function compressOne(item) {
 
   const newPath = thumbStoragePath(item.id)
 
+  if (oldPath === newPath) {
+    return { id: item.id, skipped: true, reason: 'already webp, skipping download' }
+  }
+
   const { data, error } = await admin.storage.from('tour-thumbs').download(oldPath)
   if (error || !data) {
     return { id: item.id, error: `download failed: ${error?.message ?? 'no data'}` }
@@ -84,6 +88,7 @@ async function compressOne(item) {
   const { error: upError } = await admin.storage.from('tour-thumbs').upload(newPath, compressed, {
     contentType: 'image/webp',
     upsert: true,
+    cacheControl: '31536000',
   })
   if (upError) {
     return { id: item.id, error: `upload failed: ${upError.message}` }

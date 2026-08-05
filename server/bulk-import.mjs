@@ -385,6 +385,7 @@ async function processBulkImport(req, res) {
           .upload(thumbnailPath, buffer, {
             upsert: true,
             contentType: 'image/webp',
+            cacheControl: '31536000',
           })
         if (uploadError) throw new Error(uploadError.message)
       } catch (err) {

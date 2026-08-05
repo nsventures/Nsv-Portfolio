@@ -130,26 +130,32 @@ export async function fetchAdminTour(id: string): Promise<PortfolioItemRow | nul
 
 export async function fetchPortfolioStats(): Promise<PortfolioStats> {
   const supabase = getSupabase()
-  const rows: Pick<PortfolioItemRow, 'media_type' | 'is_published'>[] = []
 
-  for (let from = 0; ; from += ADMIN_PAGE_SIZE) {
-    const to = from + ADMIN_PAGE_SIZE - 1
-    const { data, error } = await supabase
+  const [totalRes, videosRes, virtualToursRes, publishedRes] = await Promise.all([
+    supabase.from('portfolio_items').select('id', { count: 'exact', head: true }),
+    supabase
       .from('portfolio_items')
-      .select('media_type, is_published')
-      .range(from, to)
+      .select('id', { count: 'exact', head: true })
+      .eq('media_type', 'video'),
+    supabase
+      .from('portfolio_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('media_type', 'virtual-tour'),
+    supabase
+      .from('portfolio_items')
+      .select('id', { count: 'exact', head: true })
+      .eq('is_published', true),
+  ])
 
-    if (error) throw new Error(error.message)
-    const batch = (data ?? []) as Pick<PortfolioItemRow, 'media_type' | 'is_published'>[]
-    rows.push(...batch)
-    if (batch.length < ADMIN_PAGE_SIZE) break
+  for (const res of [totalRes, videosRes, virtualToursRes, publishedRes]) {
+    if (res.error) throw new Error(res.error.message)
   }
 
   return {
-    total: rows.length,
-    videos: rows.filter((r) => r.media_type === 'video').length,
-    virtualTours: rows.filter((r) => r.media_type === 'virtual-tour').length,
-    published: rows.filter((r) => r.is_published).length,
+    total: totalRes.count ?? 0,
+    videos: videosRes.count ?? 0,
+    virtualTours: virtualToursRes.count ?? 0,
+    published: publishedRes.count ?? 0,
   }
 }
 
@@ -218,6 +224,7 @@ export async function uploadTourThumbnail(
   const { error } = await supabase.storage.from('tour-thumbs').upload(path, compressed, {
     upsert: true,
     contentType: 'image/webp',
+    cacheControl: '31536000',
   })
 
   if (error) throw new Error(error.message)
@@ -344,7 +351,7 @@ export async function duplicateTour(id: string): Promise<string> {
       const compressed = await compressThumbnailFile(blob, newPath)
       const { error: upError } = await supabase.storage
         .from('tour-thumbs')
-        .upload(newPath, compressed, { upsert: true, contentType: 'image/webp' })
+        .upload(newPath, compressed, { upsert: true, contentType: 'image/webp', cacheControl: '31536000' })
       if (!upError) thumbnailPath = newPath
     }
   }

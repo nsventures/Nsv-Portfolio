@@ -288,6 +288,8 @@ export function ToursPage() {
                             tour.updated_at ?? tour.id,
                           )}
                           alt=""
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover"
                         />
                       </div>
