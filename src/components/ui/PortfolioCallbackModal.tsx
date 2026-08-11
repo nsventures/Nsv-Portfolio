@@ -18,6 +18,7 @@ interface PortfolioCallbackModalProps {
 
 interface FormState {
   name: string
+  email: string
   countryCode: string
   phone: string
   message: string
@@ -32,12 +33,14 @@ export function PortfolioCallbackModal({
   const parsedInitialPhone = parseE164Phone(initialPhone)
   const [data, setData] = useState<FormState>({
     name: initialName,
+    email: '',
     countryCode: initialPhone ? parsedInitialPhone.countryCode : DEFAULT_PHONE_COUNTRY.code,
     phone: parsedInitialPhone.nationalNumber,
     message: '',
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [emailError, setEmailError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [sent, setSent] = useState(false)
 
@@ -61,21 +64,35 @@ export function PortfolioCallbackModal({
 
     const country = findPhoneCountry(data.countryCode)
     const nextPhoneError = validateNationalNumber(country, data.phone)
+    const email = data.email.trim()
+    let nextEmailError: string | null = null
+    if (!email) nextEmailError = 'Email is required'
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) nextEmailError = 'Enter a valid email'
 
     if (!data.name.trim()) {
-      setError('Please fill in name and phone.')
+      setError('Please fill in name, email, and phone.')
+      setEmailError(nextEmailError)
       setPhoneError(nextPhoneError)
+      return
+    }
+
+    if (nextEmailError) {
+      setEmailError(nextEmailError)
+      setPhoneError(nextPhoneError)
+      setError(null)
       return
     }
 
     if (nextPhoneError) {
       setPhoneError(nextPhoneError)
+      setEmailError(null)
       setError(null)
       return
     }
 
     setSubmitting(true)
     setError(null)
+    setEmailError(null)
     setPhoneError(null)
 
     try {
@@ -90,6 +107,7 @@ export function PortfolioCallbackModal({
 
       await submitPortfolioCallback({
         name: data.name,
+        email,
         phone: toE164(country, data.phone),
         message: data.message || null,
         projectName,
@@ -175,6 +193,23 @@ export function PortfolioCallbackModal({
                   placeholder="Your name"
                   autoComplete="name"
                 />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={data.email}
+                  onChange={(e) => {
+                    setData((p) => ({ ...p, email: e.target.value }))
+                    if (emailError) setEmailError(null)
+                  }}
+                  className={inputClass(!!emailError)}
+                  placeholder="you@email.com"
+                  autoComplete="email"
+                />
+                {emailError && <p className="mt-1 text-xs text-red-500">{emailError}</p>}
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">

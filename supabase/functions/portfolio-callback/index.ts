@@ -2,7 +2,9 @@ import {
   corsHeaders,
   createServiceClient,
   errorResponse,
+  isValidEmail,
   jsonResponse,
+  normalizeEmail,
   normalizePhoneE164,
   sendCallbackRequestEmail,
 } from '../_shared/portfolio-otp.ts'
@@ -10,6 +12,7 @@ import { verifyRecaptchaV3 } from '../_shared/recaptcha.ts'
 
 interface CallbackBody {
   name?: string
+  email?: string
   phone?: string
   message?: string | null
   projectName?: string | null
@@ -28,11 +31,13 @@ Deno.serve(async (req) => {
   try {
     const body = (await req.json()) as CallbackBody
     const name = body.name?.trim() ?? ''
+    const email = normalizeEmail(body.email ?? '')
     const phoneE164 = normalizePhoneE164(body.phone ?? '')
     const message = body.message?.trim() || null
     const projectName = body.projectName?.trim() || null
 
     if (!name) return errorResponse('Name is required')
+    if (!email || !isValidEmail(email)) return errorResponse('A valid email is required')
     if (!phoneE164) return errorResponse('Enter a valid mobile number with country code')
 
     const captcha = await verifyRecaptchaV3(body.captchaToken, 'portfolio_callback', req)
@@ -41,7 +46,7 @@ Deno.serve(async (req) => {
     const supabase = createServiceClient()
     const { error: inquiryError } = await supabase.from('inquiries').insert({
       name,
-      email: '',
+      email,
       phone: phoneE164,
       message: message
         ? `Callback request — ${message}`
@@ -56,7 +61,7 @@ Deno.serve(async (req) => {
     }
 
     try {
-      await sendCallbackRequestEmail({ name, phone: phoneE164, message, projectName })
+      await sendCallbackRequestEmail({ name, email, phone: phoneE164, message, projectName })
     } catch (emailErr) {
       const emailMessage =
         emailErr instanceof Error ? emailErr.message : 'Failed to send notification email'

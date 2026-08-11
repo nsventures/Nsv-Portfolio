@@ -3,6 +3,7 @@ import { getSupabase, isSupabaseConfigured } from '../lib/supabase'
 
 export interface PortfolioCallbackPayload {
   name: string
+  email: string
   phone: string
   message?: string | null
   projectName?: string | null

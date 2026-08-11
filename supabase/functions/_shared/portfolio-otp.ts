@@ -472,6 +472,7 @@ async function sendResendEmail(opts: {
 
 export async function sendCallbackRequestEmail(opts: {
   name: string
+  email: string
   phone: string
   message?: string | null
   projectName?: string | null
@@ -479,6 +480,7 @@ export async function sendCallbackRequestEmail(opts: {
   const notifyTo =
     Deno.env.get('CALLBACK_NOTIFY_EMAIL')?.trim() || 'prateek@nsventures.in'
   const name = opts.name.trim()
+  const email = opts.email.trim()
   const phone = opts.phone.trim()
   const message = opts.message?.trim() || '—'
   const project = opts.projectName?.trim() || '—'
@@ -488,6 +490,7 @@ export async function sendCallbackRequestEmail(opts: {
       <h2 style="margin:0 0 16px;color:#002d54;font-size:20px;">New portfolio callback request</h2>
       <table style="width:100%;border-collapse:collapse;font-size:14px;color:#334155;">
         <tr><td style="padding:8px 0;font-weight:600;width:120px;">Name</td><td>${escapeHtml(name)}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:600;">Email</td><td>${escapeHtml(email)}</td></tr>
         <tr><td style="padding:8px 0;font-weight:600;">Phone</td><td>${escapeHtml(phone)}</td></tr>
         <tr><td style="padding:8px 0;font-weight:600;">Project</td><td>${escapeHtml(project)}</td></tr>
         <tr><td style="padding:8px 0;font-weight:600;vertical-align:top;">Message</td><td>${escapeHtml(message)}</td></tr>
@@ -498,6 +501,7 @@ export async function sendCallbackRequestEmail(opts: {
   const text = [
     'New portfolio callback request',
     `Name: ${name}`,
+    `Email: ${email}`,
     `Phone: ${phone}`,
     `Project: ${project}`,
     `Message: ${message}`,
