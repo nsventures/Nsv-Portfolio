@@ -73,11 +73,11 @@ export function savePortfolioAccess(
 /** Delay before auto-showing the access gate (ms). */
 export const PORTFOLIO_ACCESS_TIMER_MS = 18_000
 
-/** Set true to require WhatsApp OTP before viewing portfolio items. */
+/** Set true to require OTP before viewing portfolio items. */
 export const PORTFOLIO_ACCESS_VALIDATION_ENABLED = true
 
 export class PortfolioSessionExpiredError extends Error {
-  constructor(message = 'Your session expired. Please verify your phone again.') {
+  constructor(message = 'Your session expired. Please verify again.') {
     super(message)
     this.name = 'PortfolioSessionExpiredError'
   }
