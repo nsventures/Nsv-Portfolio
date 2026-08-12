@@ -195,7 +195,7 @@ export function PortfolioAccessGateModal({
 
   return createPortal(
     <div
-        className="portfolio-access-gate fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6"
+        className="portfolio-access-gate fixed inset-0 z-120 flex items-center justify-center p-4 sm:p-6"
         role="presentation"
       >
         <div className="portfolio-access-gate-backdrop absolute inset-0" aria-hidden />
@@ -225,27 +225,6 @@ export function PortfolioAccessGateModal({
                 />
               </div>
             </div>
-            <h2
-              id="portfolio-access-title"
-              className="mt-3 font-display text-xl sm:text-2xl font-bold text-white"
-            >
-              {step === 'otp' ? 'Check Your Email' : 'View Our Work'}
-              {/* {step === 'otp' ? 'Check WhatsApp' : 'View Our Work'} */}
-            </h2>
-            <p className="mt-1.5 text-sm text-white/75 leading-relaxed">
-              {step === 'otp' ? (
-                <>
-                  We sent a 6-digit code to{' '}
-                  <span className="text-white/90">{emailMasked || 'your email'}</span>.
-                  {/* We sent a 6-digit code via WhatsApp to{' '}
-                  <span className="text-white/90">{phoneMasked || 'your number'}</span>. */}
-                </>
-              ) : pendingProjectName ? (
-                `Verify your details to watch ${pendingProjectName}.`
-              ) : (
-                'Verify your details to explore our portfolio.'
-              )}
-            </p>
           </div>
 
           <div className="px-6 py-6 sm:px-7 sm:py-7">
@@ -314,29 +293,6 @@ export function PortfolioAccessGateModal({
                 >
                   {submitting ? 'Sending Code…' : 'Send Verification Code'}
                 </button>
-                {isRecaptchaConfigured() && (
-                  <p className="text-center text-[10px] text-slate-light leading-relaxed">
-                    This site is protected by reCAPTCHA and the Google{' '}
-                    <a
-                      href="https://policies.google.com/privacy"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline hover:text-slate"
-                    >
-                      Privacy Policy
-                    </a>{' '}
-                    and{' '}
-                    <a
-                      href="https://policies.google.com/terms"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="underline hover:text-slate"
-                    >
-                      Terms of Service
-                    </a>{' '}
-                    apply.
-                  </p>
-                )}
               </form>
             ) : (
               <form onSubmit={handleOtpSubmit} className="space-y-5">
@@ -386,9 +342,6 @@ export function PortfolioAccessGateModal({
                 </div>
               </form>
             )}
-
-            <p className="mt-6 text-center text-[11px] leading-relaxed text-slate-light">
-            We use your details to verify access and show portfolio</p>
           </div>
         </div>
       </div>,

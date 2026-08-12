@@ -4,11 +4,11 @@ export const GENERIC_PORTFOLIO_THUMBNAIL = '/portfolio-placeholder.svg'
 
 export const PORTFOLIO_THUMB_WIDTH = 560
 export const PORTFOLIO_THUMB_HEIGHT = 420
-/** 2× display size — enough for retina without storing full screenshots */
-export const PORTFOLIO_THUMB_MAX_WIDTH = PORTFOLIO_THUMB_WIDTH * 2
-export const PORTFOLIO_THUMB_MAX_HEIGHT = PORTFOLIO_THUMB_HEIGHT * 2
-/** WebP quality (0–100). ~82 keeps detail while cutting JPEG size sharply */
-export const THUMB_WEBP_QUALITY = 82
+/** 1.5× display — sharp enough on retina, much smaller than full screenshots */
+export const PORTFOLIO_THUMB_MAX_WIDTH = Math.round(PORTFOLIO_THUMB_WIDTH * 1.5)
+export const PORTFOLIO_THUMB_MAX_HEIGHT = Math.round(PORTFOLIO_THUMB_HEIGHT * 1.5)
+/** WebP quality (0–100). Lower = smaller files; ~65 is a strong size cut for thumbs */
+export const THUMB_WEBP_QUALITY = 65
 
 export const THUMB_WEBP_EXT = 'webp'
 export const thumbStoragePath = (id: string) => `${id}.${THUMB_WEBP_EXT}`

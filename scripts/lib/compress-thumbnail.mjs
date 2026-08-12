@@ -1,9 +1,9 @@
 import sharp from 'sharp'
 
 /** Keep in sync with src/lib/portfolioMedia.ts */
-export const PORTFOLIO_THUMB_MAX_WIDTH = 560 * 2
-export const PORTFOLIO_THUMB_MAX_HEIGHT = 420 * 2
-export const THUMB_WEBP_QUALITY = 82
+export const PORTFOLIO_THUMB_MAX_WIDTH = Math.round(560 * 1.5)
+export const PORTFOLIO_THUMB_MAX_HEIGHT = Math.round(420 * 1.5)
+export const THUMB_WEBP_QUALITY = 65
 export const THUMB_WEBP_EXT = 'webp'
 
 export const thumbStoragePath = (id) => `${id}.${THUMB_WEBP_EXT}`
@@ -20,6 +20,6 @@ export async function compressThumbnailBuffer(input) {
       fit: 'inside',
       withoutEnlargement: true,
     })
-    .webp({ quality: THUMB_WEBP_QUALITY, effort: 4 })
+    .webp({ quality: THUMB_WEBP_QUALITY, effort: 6 })
     .toBuffer()
 }
