@@ -1,7 +1,5 @@
 import http from 'node:http'
 import { createClient } from '@supabase/supabase-js'
-import { sendAuthyoWhatsappOtp } from './lib/authyo-client.mjs'
-import { verifyWhatsappDispatchToken } from './lib/whatsapp-dispatch.mjs'
 import {
   portfolioIdFromUrl,
   resolveMediaTypeFromLink,
@@ -501,63 +499,6 @@ async function processBulkImport(req, res) {
   res.end()
 }
 
-async function handleAuthyoSendOtp(req, res) {
-  const secret = process.env.OTP_HASH_SECRET ?? ''
-  const clientId = process.env.AUTHYO_CLIENT_ID ?? ''
-  const clientSecret = process.env.AUTHYO_CLIENT_SECRET ?? ''
-  const appId = process.env.AUTHYO_APP_ID ?? ''
-
-  if (!secret || !clientId || !clientSecret) {
-    sendJson(res, 503, {
-      ok: false,
-      error:
-        'WhatsApp relay not configured in .env.local — add OTP_HASH_SECRET (same as Supabase), AUTHYO_CLIENT_ID, AUTHYO_CLIENT_SECRET, then run npm run dev:all',
-    })
-    return
-  }
-
-  let body
-  try {
-    body = await readJsonBody(req)
-  } catch {
-    sendJson(res, 400, { ok: false, error: 'Invalid JSON body' })
-    return
-  }
-
-  const verified = verifyWhatsappDispatchToken(secret, body?.token)
-  if (!verified.ok) {
-    sendJson(res, 400, { ok: false, error: verified.error })
-    return
-  }
-
-  const origin =
-    body?.origin?.trim().replace(/\/$/, '') ||
-    process.env.AUTHYO_AUTHORIZED_ENDPOINT?.trim().replace(/\/$/, '') ||
-    process.env.AUTHYO_ORIGIN?.trim().replace(/\/$/, '') ||
-    'http://localhost:5173'
-
-  const to = verified.phoneE164.replace(/\D/g, '')
-
-  const result = await sendAuthyoWhatsappOtp({
-    clientId,
-    clientSecret,
-    appId,
-    to,
-    otp: verified.otp,
-    origin,
-    authWay: 'WhatsApp',
-  })
-
-  if (result.ok) {
-    console.log('[authyo-relay] sent via', result.method, `origin=${result.origin}`)
-    sendJson(res, 200, { ok: true, maskId: result.maskId, method: result.method })
-    return
-  }
-
-  console.warn('[authyo-relay]', result.error, `origin=${origin}`)
-  sendJson(res, 502, { ok: false, error: result.error })
-}
-
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -570,11 +511,6 @@ const server = http.createServer(async (req, res) => {
   }
 
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`)
-
-  if (url.pathname === '/api/authyo/send-otp' && req.method === 'POST') {
-    await handleAuthyoSendOtp(req, res)
-    return
-  }
 
   if (url.pathname === '/api/bulk-import/health' && req.method === 'GET') {
     sendJson(res, 200, {
@@ -652,7 +588,6 @@ server.listen(PORT, () => {
   console.log(`\nBulk import server → http://localhost:${PORT}`)
   console.log(`  Health:   GET  /api/bulk-import/health`)
   console.log(`  Import:   POST /api/bulk-import`)
-  console.log(`  Authyo:   POST /api/authyo/send-otp`)
   console.log(`  YT preview: POST /api/youtube/preview`)
   console.log(`  YT thumb:   GET  /api/youtube/thumbnail`)
   if (!serviceRoleKey) {

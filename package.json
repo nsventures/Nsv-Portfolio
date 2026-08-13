@@ -12,7 +12,6 @@
     "parse:tours": "node scripts/parse-vr-csv.mjs",
     "delete:videos": "node --env-file=.env.local scripts/delete-all-videos.mjs",
     "delete:vr-tours": "node --env-file=.env.local scripts/delete-all-vr-tours.mjs",
-    "test:authyo": "node --env-file=.env.local scripts/test-authyo.mjs",
     "backfill:youtube-dates": "node --env-file=.env.local scripts/backfill-youtube-dates.mjs",
     "compress:thumbnails": "node --env-file=.env.local scripts/compress-thumbnails.mjs",
     "compress:thumbnails:dry": "node --env-file=.env.local scripts/compress-thumbnails.mjs --dry-run",

@@ -15,49 +15,8 @@ export interface PortfolioOtpSendResult {
   emailMasked: string
   phoneMasked: string
   emailSent: boolean
-  // WhatsApp OTP (disabled — email OTP active)
-  // whatsappSent: boolean
-  // whatsappError?: string | null
-  // whatsappDispatchToken?: string | null
+  whatsappSent: boolean
 }
-
-// WhatsApp OTP (disabled — email OTP active)
-// function authyoRelayUrl(): string {
-//   const configured = import.meta.env.VITE_AUTHYO_RELAY_URL?.trim()
-//   if (configured) return configured.replace(/\/$/, '')
-//   return '/api/authyo/send-otp'
-// }
-//
-// async function dispatchWhatsappOtp(token: string, origin: string) {
-//   const res = await fetch(authyoRelayUrl(), {
-//     method: 'POST',
-//     headers: { 'Content-Type': 'application/json' },
-//     body: JSON.stringify({ token, origin }),
-//   })
-//
-//   const body = (await res.json().catch(() => ({}))) as {
-//     ok?: boolean
-//     error?: string
-//   }
-//
-//   if (!res.ok || body.ok !== true) {
-//     const err = body.error ?? 'WhatsApp relay failed'
-//     const relayOffline =
-//       res.status === 503 ||
-//       err.toLowerCase().includes('not configured') ||
-//       err.toLowerCase().includes('relay not configured')
-//     return {
-//       whatsappSent: false,
-//       whatsappError: relayOffline
-//         ? import.meta.env.PROD
-//           ? 'WhatsApp relay not configured on Vercel — add OTP_HASH_SECRET, AUTHYO_CLIENT_ID, AUTHYO_CLIENT_SECRET env vars and redeploy.'
-//           : 'WhatsApp relay offline — add Authyo secrets to .env.local and run npm run dev:all'
-//         : err,
-//     }
-//   }
-//
-//   return { whatsappSent: true, whatsappError: null as string | null }
-// }
 
 export interface PortfolioOtpVerifyPayload {
   email: string
@@ -129,29 +88,16 @@ export async function sendPortfolioOtp(
       emailMasked?: string
       phoneMasked?: string
       emailSent?: boolean
-      // whatsappDispatchToken?: string | null
+      whatsappSent?: boolean
     }
   >
-
-  // WhatsApp OTP (disabled — email OTP active)
-  // let whatsappSent = result.whatsappSent ?? false
-  // let whatsappError = result.whatsappError ?? null
-  // if (result.whatsappDispatchToken) {
-  //   const relay = await dispatchWhatsappOtp(
-  //     result.whatsappDispatchToken,
-  //     payload.siteOrigin ?? window.location.origin,
-  //   )
-  //   whatsappSent = relay.whatsappSent
-  //   whatsappError = relay.whatsappError
-  // }
 
   return {
     expiresIn: result.expiresIn,
     emailMasked: result.emailMasked ?? '',
     phoneMasked: result.phoneMasked ?? '',
     emailSent: result.emailSent ?? true,
-    // whatsappSent,
-    // whatsappError,
+    whatsappSent: result.whatsappSent ?? false,
   }
 }
 

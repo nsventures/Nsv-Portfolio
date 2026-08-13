@@ -4,7 +4,7 @@ Setup checklist **before** we wire OTP into the NS Ventures portfolio app.
 
 **Goal:** Send one-time passwords (OTP) via **Meta WhatsApp Cloud API** (official Business API), not Authyo.
 
-**Current app state:** Portfolio gate uses **email OTP (Resend)**. WhatsApp (Authyo) code exists but is disabled. This guide covers Meta setup only.
+**Current app state:** Portfolio gate sends email OTP (Resend) and, best-effort, WhatsApp OTP via Meta Cloud API (`sendWhatsappOtpViaMeta` in `supabase/functions/_shared/portfolio-otp.ts`, wired into `portfolio-otp-send`). Authyo has been removed entirely. The Meta send is currently a no-op until the `WHATSAPP_*` secrets below are set in Supabase Edge Function secrets — email keeps working either way.
 
 ---
 

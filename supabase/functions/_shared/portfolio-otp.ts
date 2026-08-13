@@ -91,262 +91,75 @@ export function maskPhone(phoneE164: string): string {
   return phoneE164
 }
 
-function phoneToAuthyoTo(phoneE164: string): string {
-  return phoneE164.replace(/\D/g, '')
-}
-
-export { phoneToAuthyoTo }
-
-/** Build ordered Authyo origin candidates (must match Authorized endpoint in dashboard). */
-export function collectAuthyoOrigins(opts: {
-  siteOrigin?: string | null
-  headerOrigin?: string | null
-  headerReferer?: string | null
-}): Array<string | null> {
-  const out: string[] = []
-
-  const add = (value?: string | null) => {
-    const trimmed = value?.trim().replace(/\/$/, '') ?? ''
-    if (!trimmed) return
-
-    if (/^https?:\/\//i.test(trimmed)) {
-      out.push(trimmed)
-      try {
-        const url = new URL(trimmed)
-        out.push(url.host)
-      } catch {
-        // ignore invalid URL parts
-      }
-      return
-    }
-
-    out.push(trimmed)
-    out.push(`http://${trimmed}`)
-    out.push(`https://${trimmed}`)
-  }
-
-  add(Deno.env.get('AUTHYO_AUTHORIZED_ENDPOINT'))
-
-  for (const extra of Deno.env.get('AUTHYO_EXTRA_ORIGINS')?.split(',') ?? []) {
-    add(extra)
-  }
-
-  add(opts.siteOrigin)
-  add(opts.headerOrigin)
-
-  const referer = opts.headerReferer?.trim()
-  if (referer) {
-    try {
-      add(new URL(referer).origin)
-    } catch {
-      // ignore
-    }
-  }
-
-  add(Deno.env.get('AUTHYO_ORIGIN'))
-  add(Deno.env.get('SUPABASE_URL')?.replace(/\/$/, ''))
-
-  const seen = new Set<string>()
-  const unique = out.filter((origin) => {
-    if (seen.has(origin)) return false
-    seen.add(origin)
-    return true
-  })
-
-  // Final attempt: no origin header (some server-side integrations allow this).
-  return [...unique, null]
-}
-
-/** @deprecated Use collectAuthyoOrigins — kept for compatibility */
-export function resolveAuthyoOrigin(opts: {
-  siteOrigin?: string | null
-  headerOrigin?: string | null
-  headerReferer?: string | null
-}): string {
-  return (collectAuthyoOrigins(opts).find((origin) => origin !== null) as string | undefined) ?? ''
-}
-
-function parseAuthyoResponse(raw: string, res: Response): AuthyoSendResponse {
-  try {
-    return JSON.parse(raw) as AuthyoSendResponse
-  } catch {
-    console.warn('[portfolio-otp] Authyo non-JSON response:', raw.slice(0, 300))
-    return {}
-  }
-}
-
-function authyoFailureDetail(payload: AuthyoSendResponse, raw: string, res: Response): string {
-  const result = payload.data?.results?.[0]
-  return (
-    result?.message ??
-    payload.message ??
-    (raw.slice(0, 200) || `HTTP ${res.status} from Authyo`)
-  )
-}
-
-function isAuthyoEndpointError(message: string): boolean {
-  const lower = message.toLowerCase()
-  return lower.includes('invalid end point') || lower.includes('invalid endpoint')
-}
-
-async function authyoSendOtpRequest(opts: {
-  clientId: string
-  clientSecret: string
-  appId?: string
-  origin: string | null
-  to: string
-  expirySeconds: number
-  otp: string
-  authWay: string
-  includeOtp: boolean
-}): Promise<{ ok: boolean; payload: AuthyoSendResponse; raw: string; res: Response }> {
-  const headers: Record<string, string> = {
-    clientId: opts.clientId,
-    clientSecret: opts.clientSecret,
-  }
-
-  if (opts.appId) {
-    headers.appId = opts.appId
-    headers.appid = opts.appId
-  }
-
-  if (opts.origin) {
-    headers.origin = opts.origin
-    headers.Referer = `${opts.origin}/`
-  }
-
-  const query = new URLSearchParams({
-    to: opts.to,
-    expiry: String(opts.expirySeconds),
-    otpLength: '6',
-    authWay: opts.authWay,
-  })
-  if (opts.includeOtp) query.set('otp', opts.otp)
-
-  const getUrl = `https://app.authyo.io/api/v1/auth/sendotp?${query}`
-  const getRes = await fetch(getUrl, { method: 'GET', headers })
-  const getRaw = await getRes.text()
-  const getPayload = parseAuthyoResponse(getRaw, getRes)
-  const getResult = getPayload.data?.results?.[0]
-  const getOk = getRes.ok && getPayload.success !== false && getResult?.success !== false
-
-  if (getOk) {
-    return { ok: true, payload: getPayload, raw: getRaw, res: getRes }
-  }
-
-  const getError = authyoFailureDetail(getPayload, getRaw, getRes)
-  if (!isAuthyoEndpointError(getError)) {
-    return { ok: false, payload: getPayload, raw: getRaw, res: getRes }
-  }
-
-  const postRes = await fetch('https://app.authyo.io/api/v1/auth/sendotp', {
-    method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      to: opts.to,
-      expiry: opts.expirySeconds,
-      otpLength: 6,
-      otplength: 6,
-      authWay: opts.authWay,
-      authway: opts.authWay,
-      ...(opts.includeOtp ? { otp: opts.otp } : {}),
-    }),
-  })
-  const postRaw = await postRes.text()
-  const postPayload = parseAuthyoResponse(postRaw, postRes)
-  const postResult = postPayload.data?.results?.[0]
-  const postOk = postRes.ok && postPayload.success !== false && postResult?.success !== false
-
-  return {
-    ok: postOk,
-    payload: postPayload,
-    raw: postRaw,
-    res: postRes,
-  }
-}
-
-interface AuthyoSendResponse {
-  success?: boolean
-  message?: string
-  data?: {
-    results?: Array<{
-      success?: boolean
-      message?: string
-      maskId?: string
-    }>
-  }
+interface MetaWhatsappSendResponse {
+  messages?: Array<{ id?: string }>
+  error?: { message?: string; code?: number; error_subcode?: number; type?: string }
 }
 
 /**
- * Send the same server-generated OTP via Authyo WhatsApp.
- * @see https://authyo.apidog.io/send-otp-12980722e0
+ * Send the same server-generated OTP via Meta WhatsApp Cloud API using an
+ * approved Authentication template.
+ * @see https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-message-templates
  */
-export async function sendWhatsappOtpViaAuthyo(
+export async function sendWhatsappOtpViaMeta(
   phoneE164: string,
   otp: string,
-  expirySeconds: number,
-  originContext?: {
-    siteOrigin?: string | null
-    headerOrigin?: string | null
-    headerReferer?: string | null
-  },
-): Promise<{ sent: boolean; maskId: string | null }> {
-  const devMode = Deno.env.get('AUTHYO_DEV_MODE') === 'true'
-  const clientId = Deno.env.get('AUTHYO_CLIENT_ID')
-  const clientSecret = Deno.env.get('AUTHYO_CLIENT_SECRET')
-  const appId = Deno.env.get('AUTHYO_APP_ID')?.trim()
+): Promise<{ sent: boolean; messageId: string | null }> {
+  const devMode = Deno.env.get('WHATSAPP_DEV_MODE') === 'true'
+  const token = Deno.env.get('WHATSAPP_TOKEN')?.trim()
+  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')?.trim()
+  const templateName = Deno.env.get('WHATSAPP_TEMPLATE_NAME')?.trim()
+  const templateLang = Deno.env.get('WHATSAPP_TEMPLATE_LANG')?.trim() || 'en'
 
   if (devMode) {
     console.log(`[portfolio-otp][dev] WhatsApp OTP for ${phoneE164}: ${otp}`)
-    return { sent: true, maskId: null }
+    return { sent: true, messageId: null }
   }
 
-  if (!clientId || !clientSecret) {
-    console.warn('[portfolio-otp] Authyo not configured — skipping WhatsApp OTP')
-    return { sent: false, maskId: null }
+  if (!token || !phoneNumberId || !templateName) {
+    console.warn('[portfolio-otp] Meta WhatsApp not configured — skipping WhatsApp OTP')
+    return { sent: false, messageId: null }
   }
 
-  const to = phoneToAuthyoTo(phoneE164)
-  const origins = collectAuthyoOrigins(originContext ?? {})
-  const authWays = ['WhatsApp', 'Whatsapp', 'WHATSAPP'] as const
-  let lastDetail = 'Authyo request failed'
+  const to = phoneE164.replace(/\D/g, '')
 
-  console.log(
-    `[portfolio-otp] Authyo sendotp → ${to} origins=${origins.map((o) => o ?? '(none)').join(', ')}`,
-  )
+  const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: templateLang },
+        components: [
+          {
+            type: 'body',
+            parameters: [{ type: 'text', text: otp }],
+          },
+          // If the approved template also has a "Copy code" quick-reply button,
+          // Meta requires a matching button component, e.g.:
+          // { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: otp }] },
+        ],
+      },
+    }),
+  })
 
-  for (const origin of origins) {
-    for (const authWay of authWays) {
-      const attempt = await authyoSendOtpRequest({
-        clientId,
-        clientSecret,
-        appId: appId || undefined,
-        origin,
-        to,
-        expirySeconds,
-        otp,
-        authWay,
-        includeOtp: true,
-      })
+  const payload = (await res.json().catch(() => ({}))) as MetaWhatsappSendResponse
 
-      if (attempt.ok) {
-        const maskId = attempt.payload.data?.results?.[0]?.maskId ?? null
-        console.log(
-          `[portfolio-otp] Authyo success via origin=${origin ?? '(none)'} authWay=${authWay}`,
-        )
-        return { sent: true, maskId }
-      }
-
-      lastDetail = authyoFailureDetail(attempt.payload, attempt.raw, attempt.res)
-      if (!isAuthyoEndpointError(lastDetail)) {
-        console.warn('[portfolio-otp] Authyo error:', lastDetail, `(origin=${origin ?? 'none'})`)
-        throw new Error(`Authyo: ${lastDetail}`)
-      }
-    }
+  if (!res.ok || payload.error) {
+    const detail = payload.error?.message ?? `HTTP ${res.status} from Meta`
+    console.warn('[portfolio-otp] Meta WhatsApp error:', detail)
+    throw new Error(`WhatsApp: ${detail}`)
   }
 
-  console.warn('[portfolio-otp] Authyo error:', lastDetail, `tried=${origins.join('|')}`)
-  throw new Error(`Authyo: ${lastDetail}`)
+  const messageId = payload.messages?.[0]?.id ?? null
+  console.log(`[portfolio-otp] Meta WhatsApp sent → ${to} (${messageId ?? 'no id'})`)
+  return { sent: true, messageId }
 }
 
 interface ResendError {

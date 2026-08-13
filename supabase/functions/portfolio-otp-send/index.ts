@@ -11,10 +11,9 @@ import {
   normalizeEmail,
   normalizePhoneE164,
   sendEmailOtp,
+  sendWhatsappOtpViaMeta,
 } from '../_shared/portfolio-otp.ts'
 import { verifyRecaptchaV3 } from '../_shared/recaptcha.ts'
-// WhatsApp OTP (disabled — email OTP active)
-// import { createWhatsappDispatchToken } from '../_shared/whatsapp-dispatch.ts'
 
 const OTP_TTL_SECONDS = 300
 const MAX_SENDS_PER_HOUR = 5
@@ -127,17 +126,23 @@ Deno.serve(async (req) => {
       throw err
     }
 
-    // WhatsApp OTP (disabled — email OTP active)
-    // const whatsappDispatchToken = await createWhatsappDispatchToken({
-    //   phoneE164,
-    //   otp,
-    //   ttlSeconds: OTP_TTL_SECONDS,
-    // })
+    let whatsappSent = false
+    try {
+      const result = await sendWhatsappOtpViaMeta(phoneE164, otp)
+      whatsappSent = result.sent
+    } catch (err) {
+      // Email already succeeded — don't fail the whole request over WhatsApp.
+      console.warn(
+        '[portfolio-otp-send] WhatsApp send failed:',
+        err instanceof Error ? err.message : err,
+      )
+    }
 
     await supabase
       .from('portfolio_otp_challenges')
       .update({
         email_sent_at: sentAt,
+        whatsapp_sent_at: whatsappSent ? sentAt : null,
       })
       .eq('id', challenge.id)
 
@@ -147,8 +152,7 @@ Deno.serve(async (req) => {
       emailMasked: maskEmail(email),
       phoneMasked: maskPhone(phoneE164),
       emailSent: true,
-      // whatsappSent: false,
-      // whatsappDispatchToken,
+      whatsappSent,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send OTP'

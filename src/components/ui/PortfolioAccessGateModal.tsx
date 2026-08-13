@@ -47,18 +47,6 @@ function validateDetails(data: FormState): FormErrors {
   return errors
 }
 
-// WhatsApp OTP (disabled — email OTP active)
-// function whatsappFailureMessage(whatsappError: string | null): string {
-//   const lower = whatsappError?.toLowerCase() ?? ''
-//   if (lower.includes('invalid end point') || lower.includes('invalid endpoint')) {
-//     return 'WhatsApp failed — Authyo Client ID/Secret must match the app with your authorized endpoints saved. Check Authyo → Application → SDK, update .env.local, run npm run test:authyo.'
-//   }
-//   if (lower.includes('relay')) {
-//     return 'WhatsApp relay offline — run npm run dev:all (needs import server on :3001).'
-//   }
-//   return whatsappError ?? 'Could not send the WhatsApp verification code. Please try again.'
-// }
-
 export function PortfolioAccessGateModal({
   pendingProjectName,
   onValidated,
