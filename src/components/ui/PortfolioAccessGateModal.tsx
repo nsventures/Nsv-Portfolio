@@ -284,6 +284,13 @@ export function PortfolioAccessGateModal({
               </form>
             ) : (
               <form onSubmit={handleOtpSubmit} className="space-y-5">
+                {emailMasked && (
+                  <p className="text-center text-xs text-slate">
+                    We sent a 6-digit code to{' '}
+                    <span className="font-semibold text-navy">{emailMasked}</span>
+                  </p>
+                )}
+
                 <div>
                   <label className="mb-3 block text-center text-xs font-semibold uppercase tracking-wide text-slate">
                     Enter Verification Code

@@ -93,6 +93,20 @@ export async function updateCityState(id: string, state: string): Promise<void> 
 /** Supabase caps a single query at 1000 rows by default — page past that. */
 const ADMIN_PAGE_SIZE = 1000
 
+/**
+ * Display-only ordering for the admin tabs: virtual tours come back newest-added first
+ * (matching how the public page sorts them), videos stay as queried (sort_order asc) so
+ * their drag positions hold. No sort_order values are written.
+ */
+function withVirtualToursNewestFirst(rows: PortfolioItemRow[]): PortfolioItemRow[] {
+  const virtualTours = rows.filter((r) => r.media_type === 'virtual-tour')
+  const videos = rows.filter((r) => r.media_type !== 'virtual-tour')
+
+  virtualTours.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+
+  return [...virtualTours, ...videos]
+}
+
 export async function fetchAdminTours(): Promise<PortfolioItemRow[]> {
   const supabase = getSupabase()
   const all: PortfolioItemRow[] = []
@@ -113,7 +127,7 @@ export async function fetchAdminTours(): Promise<PortfolioItemRow[]> {
     if (batch.length < ADMIN_PAGE_SIZE) break
   }
 
-  return all
+  return withVirtualToursNewestFirst(all)
 }
 
 export async function fetchAdminTour(id: string): Promise<PortfolioItemRow | null> {
