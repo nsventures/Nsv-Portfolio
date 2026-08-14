@@ -60,9 +60,9 @@ export function PortfolioAccessGateModal({
   })
   const [otp, setOtp] = useState('')
   const [emailMasked, setEmailMasked] = useState('')
-  // const [phoneMasked, setPhoneMasked] = useState('')
-  // const [whatsappSent, setWhatsappSent] = useState(false)
-  // const [whatsappError, setWhatsappError] = useState<string | null>(null)
+  const [phoneMasked, setPhoneMasked] = useState('')
+  const [whatsappSent, setWhatsappSent] = useState(false)
+  const [whatsappError, setWhatsappError] = useState<string | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [resendIn, setResendIn] = useState(0)
@@ -120,16 +120,10 @@ export function PortfolioAccessGateModal({
         captchaToken,
       })
 
-      // WhatsApp OTP (disabled — email OTP active)
-      // if (!result.whatsappSent) {
-      //   setErrors({ submit: whatsappFailureMessage(result.whatsappError ?? null) })
-      //   return
-      // }
-
       setEmailMasked(result.emailMasked)
-      // setPhoneMasked(result.phoneMasked)
-      // setWhatsappSent(result.whatsappSent)
-      // setWhatsappError(result.whatsappError ?? null)
+      setPhoneMasked(result.phoneMasked)
+      setWhatsappSent(result.whatsappSent)
+      setWhatsappError(result.whatsappError ?? null)
       setResendIn(60)
       setOtp('')
       setStep('otp')
@@ -250,8 +244,7 @@ export function PortfolioAccessGateModal({
 
                 <div>
                   <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate">
-                    Phone
-                    {/* Phone (WhatsApp) */}
+                    Phone (WhatsApp)
                   </label>
                   <PhoneInput
                     countryCode={data.countryCode}
@@ -284,10 +277,24 @@ export function PortfolioAccessGateModal({
               </form>
             ) : (
               <form onSubmit={handleOtpSubmit} className="space-y-5">
-                {emailMasked && (
+                {(emailMasked || phoneMasked) && (
                   <p className="text-center text-xs text-slate">
                     We sent a 6-digit code to{' '}
-                    <span className="font-semibold text-navy">{emailMasked}</span>
+                    {whatsappSent && phoneMasked ? (
+                      <>
+                        WhatsApp <span className="font-semibold text-navy">{phoneMasked}</span>
+                        {emailMasked && (
+                          <>
+                            {' '}and <span className="font-semibold text-navy">{emailMasked}</span>
+                          </>
+                        )}
+                      </>
+                    ) : (
+                      <span className="font-semibold text-navy">{emailMasked}</span>
+                    )}
+                    {!whatsappSent && whatsappError ? (
+                      <span className="mt-1 block text-red-500">{whatsappError}</span>
+                    ) : null}
                   </p>
                 )}
 

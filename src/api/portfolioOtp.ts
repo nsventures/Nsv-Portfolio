@@ -16,6 +16,7 @@ export interface PortfolioOtpSendResult {
   phoneMasked: string
   emailSent: boolean
   whatsappSent: boolean
+  whatsappError?: string | null
 }
 
 export interface PortfolioOtpVerifyPayload {
@@ -89,6 +90,7 @@ export async function sendPortfolioOtp(
       phoneMasked?: string
       emailSent?: boolean
       whatsappSent?: boolean
+      whatsappError?: string | null
     }
   >
 
@@ -98,6 +100,7 @@ export async function sendPortfolioOtp(
     phoneMasked: result.phoneMasked ?? '',
     emailSent: result.emailSent ?? true,
     whatsappSent: result.whatsappSent ?? false,
+    whatsappError: result.whatsappError ?? null,
   }
 }
 

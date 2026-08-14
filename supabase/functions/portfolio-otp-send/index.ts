@@ -127,15 +127,17 @@ Deno.serve(async (req) => {
     }
 
     let whatsappSent = false
+    let whatsappError: string | null = null
     try {
       const result = await sendWhatsappOtpViaMeta(phoneE164, otp)
       whatsappSent = result.sent
+      if (!whatsappSent) {
+        whatsappError = 'WhatsApp is not configured on the server'
+      }
     } catch (err) {
       // Email already succeeded — don't fail the whole request over WhatsApp.
-      console.warn(
-        '[portfolio-otp-send] WhatsApp send failed:',
-        err instanceof Error ? err.message : err,
-      )
+      whatsappError = err instanceof Error ? err.message : 'WhatsApp send failed'
+      console.warn('[portfolio-otp-send] WhatsApp send failed:', whatsappError)
     }
 
     await supabase
@@ -153,6 +155,7 @@ Deno.serve(async (req) => {
       phoneMasked: maskPhone(phoneE164),
       emailSent: true,
       whatsappSent,
+      whatsappError,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to send OTP'

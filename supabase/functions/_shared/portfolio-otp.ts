@@ -109,7 +109,7 @@ export async function sendWhatsappOtpViaMeta(
   const token = Deno.env.get('WHATSAPP_TOKEN')?.trim()
   const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID')?.trim()
   const templateName = Deno.env.get('WHATSAPP_TEMPLATE_NAME')?.trim()
-  const templateLang = Deno.env.get('WHATSAPP_TEMPLATE_LANG')?.trim() || 'en'
+  const templateLang = Deno.env.get('WHATSAPP_TEMPLATE_LANG')?.trim() || 'en_US'
 
   if (devMode) {
     console.log(`[portfolio-otp][dev] WhatsApp OTP for ${phoneE164}: ${otp}`)
@@ -122,6 +122,25 @@ export async function sendWhatsappOtpViaMeta(
   }
 
   const to = phoneE164.replace(/\D/g, '')
+  const purpose = Deno.env.get('WHATSAPP_TEMPLATE_PURPOSE')?.trim() || 'Login'
+
+  // nsv_portfolio_otp body: "OTP Code: {{1}}. This is your OTP code for {{2}}."
+  // Copy-code button also takes {{1}} as a URL param (sub_type url, index 0).
+  const components = [
+    {
+      type: 'body',
+      parameters: [
+        { type: 'text', text: otp },
+        { type: 'text', text: purpose },
+      ],
+    },
+    {
+      type: 'button',
+      sub_type: 'url',
+      index: '0',
+      parameters: [{ type: 'text', text: otp }],
+    },
+  ]
 
   const res = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
     method: 'POST',
@@ -131,26 +150,18 @@ export async function sendWhatsappOtpViaMeta(
     },
     body: JSON.stringify({
       messaging_product: 'whatsapp',
+      recipient_type: 'individual',
       to,
       type: 'template',
       template: {
         name: templateName,
         language: { code: templateLang },
-        components: [
-          {
-            type: 'body',
-            parameters: [{ type: 'text', text: otp }],
-          },
-          // If the approved template also has a "Copy code" quick-reply button,
-          // Meta requires a matching button component, e.g.:
-          // { type: 'button', sub_type: 'url', index: '0', parameters: [{ type: 'text', text: otp }] },
-        ],
+        components,
       },
     }),
   })
 
   const payload = (await res.json().catch(() => ({}))) as MetaWhatsappSendResponse
-
   if (!res.ok || payload.error) {
     const detail = payload.error?.message ?? `HTTP ${res.status} from Meta`
     console.warn('[portfolio-otp] Meta WhatsApp error:', detail)
