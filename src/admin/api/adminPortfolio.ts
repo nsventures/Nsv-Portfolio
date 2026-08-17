@@ -94,15 +94,14 @@ export async function updateCityState(id: string, state: string): Promise<void> 
 const ADMIN_PAGE_SIZE = 1000
 
 /**
- * Display-only ordering for the admin tabs: virtual tours come back newest-added first
- * (matching how the public page sorts them), videos stay as queried (sort_order asc) so
- * their drag positions hold. No sort_order values are written.
+ * Each admin tab is ordered by sort_order so drag-and-drop is the source of
+ * truth. The public VR tab uses the same column once 028 is applied.
  */
-function withVirtualToursNewestFirst(rows: PortfolioItemRow[]): PortfolioItemRow[] {
+function withAdminTabOrder(rows: PortfolioItemRow[]): PortfolioItemRow[] {
   const virtualTours = rows.filter((r) => r.media_type === 'virtual-tour')
   const videos = rows.filter((r) => r.media_type !== 'virtual-tour')
 
-  virtualTours.sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+  virtualTours.sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
 
   return [...virtualTours, ...videos]
 }
@@ -127,7 +126,7 @@ export async function fetchAdminTours(): Promise<PortfolioItemRow[]> {
     if (batch.length < ADMIN_PAGE_SIZE) break
   }
 
-  return withVirtualToursNewestFirst(all)
+  return withAdminTabOrder(all)
 }
 
 export async function fetchAdminTour(id: string): Promise<PortfolioItemRow | null> {
@@ -182,13 +181,24 @@ export async function createTour(
 
   let sortOrder = item.sort_order
   if (sortOrder == null || sortOrder === 0) {
-    const { data: last } = await supabase
-      .from('portfolio_items')
-      .select('sort_order')
-      .order('sort_order', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    sortOrder = (last?.sort_order ?? 0) + 1
+    if (item.media_type === 'virtual-tour') {
+      const { data: first } = await supabase
+        .from('portfolio_items')
+        .select('sort_order')
+        .eq('media_type', 'virtual-tour')
+        .order('sort_order', { ascending: true })
+        .limit(1)
+        .maybeSingle()
+      sortOrder = (first?.sort_order ?? 0) - 1
+    } else {
+      const { data: last } = await supabase
+        .from('portfolio_items')
+        .select('sort_order')
+        .order('sort_order', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      sortOrder = (last?.sort_order ?? 0) + 1
+    }
   }
 
   const { error } = await supabase
@@ -390,7 +400,8 @@ export async function duplicateTour(id: string): Promise<string> {
     media_type: tour.media_type,
     category: tour.category,
     is_published: false,
-    sort_order: (last?.sort_order ?? 0) + 1,
+    // 0 lets createTour place virtual tours at the top; videos still append.
+    sort_order: tour.media_type === 'virtual-tour' ? 0 : (last?.sort_order ?? 0) + 1,
   })
 
   return newId

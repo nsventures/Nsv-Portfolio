@@ -140,9 +140,7 @@ export function ToursPage() {
     )
   }, [tours])
 
-  // Virtual tours are shown newest-added first, so drag order only applies to videos.
-  const canReorder =
-    mediaTab === 'video' && !search.trim() && stateFilter === 'all' && statusFilter === 'all'
+  const canReorder = !search.trim() && stateFilter === 'all' && statusFilter === 'all'
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
@@ -172,23 +170,22 @@ export function ToursPage() {
   const handleDrop = async (targetId: string) => {
     if (!dragId || dragId === targetId) return
 
-    // Only video sort_order is persisted; virtual tours keep their created_at ordering.
-    const others = tours.filter((t) => t.media_type !== 'video')
-    const videos = tours.filter((t) => t.media_type === 'video')
+    const others = tours.filter((t) => t.media_type !== mediaTab)
+    const group = tours.filter((t) => t.media_type === mediaTab)
 
-    const fromIndex = videos.findIndex((t) => t.id === dragId)
-    const toIndex = videos.findIndex((t) => t.id === targetId)
+    const fromIndex = group.findIndex((t) => t.id === dragId)
+    const toIndex = group.findIndex((t) => t.id === targetId)
     if (fromIndex < 0 || toIndex < 0) return
 
-    const nextVideos = [...videos]
-    const [moved] = nextVideos.splice(fromIndex, 1)
-    nextVideos.splice(toIndex, 0, moved)
+    const nextGroup = [...group]
+    const [moved] = nextGroup.splice(fromIndex, 1)
+    nextGroup.splice(toIndex, 0, moved)
 
-    setTours([...others, ...nextVideos])
+    setTours([...others, ...nextGroup])
     setDragId(null)
     setSavingOrder(true)
     try {
-      await reorderTours(nextVideos.map((t) => t.id))
+      await reorderTours(nextGroup.map((t) => t.id))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Reorder failed')
       load()
@@ -207,11 +204,9 @@ export function ToursPage() {
         subtitle={
           savingOrder
             ? 'Saving order…'
-            : mediaTab === 'virtual-tour'
-              ? `${filtered.length} virtual tours · newest added first`
-              : canReorder
-                ? `${filtered.length} videos · drag ⠿ to reorder`
-                : `${filtered.length} of ${tabCounts.video} videos · clear filters to reorder`
+            : canReorder
+              ? `${filtered.length} ${mediaTab === 'virtual-tour' ? 'virtual tours' : 'videos'} · drag ⠿ to reorder`
+              : `${filtered.length} of ${tabCounts[mediaTab]} ${mediaTab === 'virtual-tour' ? 'virtual tours' : 'videos'} · clear filters to reorder`
         }
         action={
           <Link
