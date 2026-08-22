@@ -9,6 +9,7 @@ import {
   reorderTours,
 } from '../api/adminPortfolio'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
+import { VrSitePreview } from '../components/VrSitePreview'
 import type { PortfolioItemRow } from '../types'
 
 type MediaTab = 'virtual-tour' | 'video'
@@ -38,6 +39,7 @@ export function ToursPage() {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [savingOrder, setSavingOrder] = useState(false)
+  const [pendingVrOrder, setPendingVrOrder] = useState<PortfolioItemRow[] | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(focusId)
 
   const load = () => {
@@ -89,6 +91,7 @@ export function ToursPage() {
   const selectTab = (tab: MediaTab) => {
     setMediaTab(tab)
     tabPinned.current = true
+    if (tab !== 'virtual-tour') setPendingVrOrder(null)
     const next = new URLSearchParams(searchParams)
     next.set('tab', tab)
     setSearchParams(next, { replace: true })
@@ -167,31 +170,62 @@ export function ToursPage() {
     }
   }
 
-  const handleDrop = async (targetId: string) => {
-    if (!dragId || dragId === targetId) return
-
-    const others = tours.filter((t) => t.media_type !== mediaTab)
-    const group = tours.filter((t) => t.media_type === mediaTab)
-
-    const fromIndex = group.findIndex((t) => t.id === dragId)
-    const toIndex = group.findIndex((t) => t.id === targetId)
-    if (fromIndex < 0 || toIndex < 0) return
-
+  const moveInGroup = (id: string, toIndex: number, group: PortfolioItemRow[]) => {
+    const fromIndex = group.findIndex((t) => t.id === id)
+    if (fromIndex < 0 || fromIndex === toIndex) return null
     const nextGroup = [...group]
     const [moved] = nextGroup.splice(fromIndex, 1)
     nextGroup.splice(toIndex, 0, moved)
+    return nextGroup
+  }
 
-    setTours([...others, ...nextGroup])
-    setDragId(null)
+  const persistGroupOrder = async (nextGroup: PortfolioItemRow[]) => {
+    const others = tours.filter((t) => t.media_type !== mediaTab)
+    const withOrder = nextGroup.map((row, index) => ({ ...row, sort_order: index }))
+    setTours([...others, ...withOrder])
     setSavingOrder(true)
     try {
-      await reorderTours(nextGroup.map((t) => t.id))
+      await reorderTours(withOrder.map((t) => t.id))
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Reorder failed')
       load()
     } finally {
       setSavingOrder(false)
     }
+  }
+
+  const handleDrop = async (targetId: string) => {
+    if (!dragId || dragId === targetId) return
+
+    const group = tours.filter((t) => t.media_type === mediaTab)
+    const fromIndex = group.findIndex((t) => t.id === dragId)
+    const toIndex = group.findIndex((t) => t.id === targetId)
+    setDragId(null)
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return
+
+    const nextGroup = moveInGroup(dragId, toIndex, group)
+    if (!nextGroup) return
+
+    if (mediaTab === 'virtual-tour') {
+      setPendingVrOrder(nextGroup)
+      return
+    }
+
+    await persistGroupOrder(nextGroup)
+  }
+
+  const handleSortNumber = (id: string, nextPosition: number) => {
+    const group = tours.filter((t) => t.media_type === 'virtual-tour')
+    const toIndex = Math.max(0, Math.min(group.length - 1, Math.floor(nextPosition) - 1))
+    const nextGroup = moveInGroup(id, toIndex, group)
+    if (!nextGroup) return
+    setPendingVrOrder(nextGroup)
+  }
+
+  const confirmVrOrder = async () => {
+    if (!pendingVrOrder) return
+    await persistGroupOrder(pendingVrOrder)
+    setPendingVrOrder(null)
   }
 
   const selectClass =
@@ -205,7 +239,9 @@ export function ToursPage() {
           savingOrder
             ? 'Saving order…'
             : canReorder
-              ? `${filtered.length} ${mediaTab === 'virtual-tour' ? 'virtual tours' : 'videos'} · drag ⠿ to reorder`
+              ? mediaTab === 'virtual-tour'
+                ? `${filtered.length} virtual tours · change sort # to preview, then confirm`
+                : `${filtered.length} videos · drag ⠿ to reorder`
               : `${filtered.length} of ${tabCounts[mediaTab]} ${mediaTab === 'virtual-tour' ? 'virtual tours' : 'videos'} · clear filters to reorder`
         }
         action={
@@ -291,6 +327,11 @@ export function ToursPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-off-white/80">
+                  {mediaTab === 'virtual-tour' && (
+                    <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider w-16">
+                      Sort
+                    </th>
+                  )}
                   <th className="px-3 py-4 w-10" aria-label="Reorder" />
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider">
                     Preview
@@ -319,11 +360,11 @@ export function ToursPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((tour) => (
+                {filtered.map((tour, index) => (
                   <tr
                     key={tour.id}
                     id={`tour-row-${tour.id}`}
-                    draggable={canReorder}
+                    draggable={canReorder && !pendingVrOrder}
                     onDragStart={() => canReorder && setDragId(tour.id)}
                     onDragEnd={() => setDragId(null)}
                     onDragOver={(e) => canReorder && e.preventDefault()}
@@ -336,6 +377,16 @@ export function ToursPage() {
                           : 'hover:bg-off-white/50'
                     }`}
                   >
+                    {mediaTab === 'virtual-tour' && (
+                      <td className="px-3 py-4">
+                        <SortNumberInput
+                          value={index + 1}
+                          max={filtered.length}
+                          disabled={!canReorder || savingOrder || pendingVrOrder !== null}
+                          onCommit={(next) => handleSortNumber(tour.id, next)}
+                        />
+                      </td>
+                    )}
                     <td
                       className={`px-3 py-4 text-slate-light select-none ${
                         canReorder ? 'cursor-grab active:cursor-grabbing' : 'opacity-30'
@@ -423,6 +474,67 @@ export function ToursPage() {
           </div>
         )}
       </AdminCard>
+
+      {pendingVrOrder && (
+        <VrSitePreview
+          tours={pendingVrOrder}
+          saving={savingOrder}
+          onConfirm={() => void confirmVrOrder()}
+          onCancel={() => setPendingVrOrder(null)}
+        />
+      )}
     </>
+  )
+}
+
+function SortNumberInput({
+  value,
+  max,
+  disabled,
+  onCommit,
+}: {
+  value: number
+  max: number
+  disabled: boolean
+  onCommit: (next: number) => void
+}) {
+  const [draft, setDraft] = useState(String(value))
+
+  useEffect(() => {
+    setDraft(String(value))
+  }, [value])
+
+  const commit = () => {
+    const parsed = Number.parseInt(draft, 10)
+    if (!Number.isFinite(parsed)) {
+      setDraft(String(value))
+      return
+    }
+    const next = Math.max(1, Math.min(max, parsed))
+    setDraft(String(value))
+    if (next !== value) onCommit(next)
+  }
+
+  return (
+    <input
+      type="number"
+      min={1}
+      max={max}
+      value={draft}
+      disabled={disabled}
+      draggable={false}
+      aria-label={`Sort position ${value}`}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          ;(e.target as HTMLInputElement).blur()
+        }
+      }}
+      className="w-14 rounded-lg border border-border bg-off-white px-2 py-1.5 text-center text-sm font-semibold text-navy focus:border-cyan focus:outline-none disabled:opacity-50"
+    />
   )
 }
