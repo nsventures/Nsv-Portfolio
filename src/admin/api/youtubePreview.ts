@@ -8,13 +8,9 @@ export interface YoutubePreviewResult {
   dateError?: string
 }
 
-function youtubeApiBase(): string {
-  return (import.meta.env.VITE_BULK_IMPORT_API_URL ?? '').replace(/\/$/, '')
-}
-
+/** Same-origin Vercel/Vite `/api/youtube` — not the bulk-import server. */
 function youtubeApiUrl(path: string): string {
-  const base = youtubeApiBase()
-  return base ? `${base}${path}` : path
+  return path
 }
 
 /** Immediate CDN preview URL (no server). */
@@ -53,11 +49,7 @@ export async function fetchYoutubePreview(link: string): Promise<YoutubePreviewR
         videoId: youtubeVideoId(trimmed) ?? '',
         publishedAt: null,
         thumbnailUrl: fallbackThumb,
-        dateError:
-          body.error ??
-          (import.meta.env.DEV
-            ? 'Publish date unavailable — run npm run dev:all for YouTube preview API'
-            : 'Publish date unavailable'),
+        dateError: body.error ?? 'Publish date unavailable',
       }
     }
     throw new Error(body.error ?? `Preview failed (${res.status})`)
