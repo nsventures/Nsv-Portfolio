@@ -53,6 +53,53 @@ async function fetchViaDataApi(videoId, apiKey) {
   return publishedAt
 }
 
+function normalizePublishDate(value) {
+  const raw = String(value ?? '').trim()
+  if (!raw) return null
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) return raw
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return `${raw}T00:00:00.000Z`
+  const parsed = Date.parse(raw)
+  if (Number.isNaN(parsed)) return null
+  return new Date(parsed).toISOString()
+}
+
+function dateFromMicroformat(data) {
+  const micro = data?.microformat?.playerMicroformatRenderer
+  return normalizePublishDate(micro?.publishDate || micro?.uploadDate)
+}
+
+async function fetchViaInnertube(videoId) {
+  const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+    body: JSON.stringify({
+      context: {
+        client: {
+          clientName: 'WEB',
+          clientVersion: '2.20240815.01.00',
+          hl: 'en',
+          gl: 'US',
+        },
+      },
+      videoId,
+    }),
+  })
+
+  if (!res.ok) {
+    throw new Error(`YouTube player API HTTP ${res.status}`)
+  }
+
+  const data = await res.json()
+  const publishedAt = dateFromMicroformat(data)
+  if (!publishedAt) throw new Error('No publish date in player API')
+  return publishedAt
+}
+
 async function fetchViaWatchPage(videoId) {
   const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
@@ -68,11 +115,17 @@ async function fetchViaWatchPage(videoId) {
 
   const html = await res.text()
 
-  const uploadMatch = html.match(/"uploadDate"\s*:\s*"(\d{4}-\d{2}-\d{2}T[^"]+)"/)
-  if (uploadMatch?.[1]) return uploadMatch[1]
+  const itemprop = html.match(
+    /itemprop="(?:uploadDate|datePublished)"\s+content="([^"]+)"/,
+  )
+  const fromItemprop = normalizePublishDate(itemprop?.[1])
+  if (fromItemprop) return fromItemprop
 
-  const publishMatch = html.match(/"publishDate"\s*:\s*"(\d{4}-\d{2}-\d{2}T[^"]+)"/)
-  if (publishMatch?.[1]) return publishMatch[1]
+  const jsonDate = html.match(
+    /"(?:uploadDate|publishDate)"\s*:\s*"(\d{4}-\d{2}-\d{2}(?:T[^"]*)?)"/,
+  )
+  const fromJson = normalizePublishDate(jsonDate?.[1])
+  if (fromJson) return fromJson
 
   const marker = 'ytInitialPlayerResponse'
   const markerIndex = html.indexOf(marker)
@@ -80,8 +133,7 @@ async function fetchViaWatchPage(videoId) {
     const braceIndex = html.indexOf('{', markerIndex)
     const jsonText = braceIndex !== -1 ? extractJsonObject(html, braceIndex) : null
     if (jsonText) {
-      const data = JSON.parse(jsonText)
-      const fromMicroformat = data?.microformat?.playerMicroformatRenderer?.uploadDate
+      const fromMicroformat = dateFromMicroformat(JSON.parse(jsonText))
       if (fromMicroformat) return fromMicroformat
     }
   }
@@ -105,8 +157,15 @@ export async function fetchYoutubeMetadata(url) {
       const publishedAt = await fetchViaDataApi(videoId, apiKey)
       return { videoId, publishedAt }
     } catch (err) {
-      console.warn('[youtube-metadata] Data API failed, falling back to watch page:', err.message)
+      console.warn('[youtube-metadata] Data API failed, trying player API:', err.message)
     }
+  }
+
+  try {
+    const publishedAt = await fetchViaInnertube(videoId)
+    return { videoId, publishedAt }
+  } catch (err) {
+    console.warn('[youtube-metadata] Player API failed, falling back to watch page:', err.message)
   }
 
   const publishedAt = await fetchViaWatchPage(videoId)
