@@ -90,6 +90,10 @@ function findDateInObject(value, depth = 0) {
     return null
   }
   if (typeof value === 'object') {
+    if (typeof value.simpleText === 'string') {
+      const fromLabel = normalizePublishDate(value.simpleText)
+      if (fromLabel) return fromLabel
+    }
     for (const key of ['publishDate', 'uploadDate', 'datePublished', 'uploadDateText']) {
       if (key in value) {
         const found = findDateInObject(value[key], depth + 1)
@@ -98,6 +102,44 @@ function findDateInObject(value, depth = 0) {
     }
   }
   return null
+}
+
+async function fetchViaChannelRss(videoId, channelId) {
+  const res = await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, {
+    headers: YT_HEADERS,
+  })
+  if (!res.ok) throw new Error(`RSS HTTP ${res.status}`)
+
+  const xml = await res.text()
+  const entries = xml.split('<entry>')
+  for (const entry of entries) {
+    if (!entry.includes(`<yt:videoId>${videoId}</yt:videoId>`)) continue
+    const published = entry.match(/<published>([^<]+)<\/published>/)?.[1]
+    const normalized = normalizePublishDate(published)
+    if (normalized) return normalized
+  }
+  throw new Error('Video not in channel RSS')
+}
+
+async function channelIdFromOembed(videoId) {
+  const res = await fetch(
+    `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${videoId}`)}`,
+    { headers: YT_HEADERS },
+  )
+  if (!res.ok) throw new Error(`oEmbed HTTP ${res.status}`)
+  const data = await res.json()
+  const authorUrl = typeof data.author_url === 'string' ? data.author_url : ''
+  if (!authorUrl) throw new Error('oEmbed has no channel URL')
+
+  const page = await fetch(authorUrl, { headers: YT_HEADERS })
+  if (!page.ok) throw new Error(`Channel page HTTP ${page.status}`)
+  const html = await page.text()
+  const match =
+    html.match(/"externalId":"(UC[^"]+)"/) ||
+    html.match(/"channelId":"(UC[^"]+)"/) ||
+    html.match(/channel_id=(UC[0-9A-Za-z_-]+)/)
+  if (!match?.[1]) throw new Error('No channel id on channel page')
+  return match[1]
 }
 
 const INNERTUBE_CLIENTS = [
@@ -109,6 +151,7 @@ const INNERTUBE_CLIENTS = [
 
 async function fetchViaInnertube(videoId) {
   const errors = []
+  let channelId = null
 
   for (const client of INNERTUBE_CLIENTS) {
     try {
@@ -132,11 +175,28 @@ async function fetchViaInnertube(videoId) {
       }
 
       const data = await res.json()
+      channelId = channelId || data?.videoDetails?.channelId || null
       const publishedAt = dateFromMicroformat(data) || findDateInObject(data.microformat)
       if (publishedAt) return publishedAt
       errors.push(`${client.clientName} no date`)
     } catch (err) {
       errors.push(`${client.clientName} ${err instanceof Error ? err.message : 'failed'}`)
+    }
+  }
+
+  if (!channelId) {
+    try {
+      channelId = await channelIdFromOembed(videoId)
+    } catch (err) {
+      errors.push(`oEmbed ${err instanceof Error ? err.message : 'failed'}`)
+    }
+  }
+
+  if (channelId) {
+    try {
+      return await fetchViaChannelRss(videoId, channelId)
+    } catch (err) {
+      errors.push(`RSS ${err instanceof Error ? err.message : 'failed'}`)
     }
   }
 
