@@ -55,6 +55,7 @@ function youtubeDevApi(): Plugin {
               writeJson(res, 400, { ok: false, error: 'url is required' })
               return
             }
+            // @ts-expect-error JS helper — no types in the node tsconfig
             const { buildYoutubePreview } = await import('./server/lib/youtube-preview.mjs')
             const result = await buildYoutubePreview(url)
             writeJson(res, result.ok ? 200 : 400, result)
@@ -65,15 +66,15 @@ function youtubeDevApi(): Plugin {
             const { searchParams } = new URL(req.url ?? '', 'http://localhost')
             const rawUrl = searchParams.get('url') ?? ''
             const rawId = searchParams.get('id') ?? ''
+            // @ts-expect-error JS helper — no types in the node tsconfig
             const { youtubeVideoIdFromUrl } = await import('./scripts/lib/tour-import-utils.mjs')
             const videoId = rawId.trim() || (rawUrl ? youtubeVideoIdFromUrl(rawUrl) : null)
             if (!videoId) {
               writeJson(res, 400, { ok: false, error: 'id or url is required' })
               return
             }
-            const { fetchYoutubeThumbnailBuffer } = await import(
-              './scripts/lib/youtube-screenshot.mjs'
-            )
+            // @ts-expect-error JS helper — no types in the node tsconfig
+            const { fetchYoutubeThumbnailBuffer } = await import('./scripts/lib/youtube-screenshot.mjs')
             const buffer = await fetchYoutubeThumbnailBuffer(
               rawUrl.trim() || `https://www.youtube.com/watch?v=${videoId}`,
             )
