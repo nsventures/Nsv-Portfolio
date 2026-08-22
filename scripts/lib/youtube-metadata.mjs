@@ -63,50 +63,89 @@ function normalizePublishDate(value) {
   return new Date(parsed).toISOString()
 }
 
-function dateFromMicroformat(data) {
-  const micro = data?.microformat?.playerMicroformatRenderer
-  return normalizePublishDate(micro?.publishDate || micro?.uploadDate)
+const YT_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Accept-Language': 'en-US,en;q=0.9',
+  Cookie: 'CONSENT=YES+; SOCS=CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjQwODE1LjA3X3AxGgJlbiACGgYIgJz8sgY',
 }
 
-async function fetchViaInnertube(videoId) {
-  const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
-    body: JSON.stringify({
-      context: {
-        client: {
-          clientName: 'WEB',
-          clientVersion: '2.20240815.01.00',
-          hl: 'en',
-          gl: 'US',
-        },
-      },
-      videoId,
-    }),
-  })
+function dateFromMicroformat(data) {
+  const micro = data?.microformat?.playerMicroformatRenderer
+  const dataRenderer = data?.microformat?.microformatDataRenderer
+  return (
+    normalizePublishDate(micro?.publishDate || micro?.uploadDate) ||
+    normalizePublishDate(dataRenderer?.publishDate || dataRenderer?.uploadDate)
+  )
+}
 
-  if (!res.ok) {
-    throw new Error(`YouTube player API HTTP ${res.status}`)
+function findDateInObject(value, depth = 0) {
+  if (!value || depth > 8) return null
+  if (typeof value === 'string') return normalizePublishDate(value)
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findDateInObject(item, depth + 1)
+      if (found) return found
+    }
+    return null
+  }
+  if (typeof value === 'object') {
+    for (const key of ['publishDate', 'uploadDate', 'datePublished', 'uploadDateText']) {
+      if (key in value) {
+        const found = findDateInObject(value[key], depth + 1)
+        if (found) return found
+      }
+    }
+  }
+  return null
+}
+
+const INNERTUBE_CLIENTS = [
+  { clientName: 'WEB', clientVersion: '2.20240815.01.00' },
+  { clientName: 'MWEB', clientVersion: '2.20240815.01.00' },
+  { clientName: 'WEB_EMBEDDED_PLAYER', clientVersion: '1.20240815.01.00' },
+  { clientName: 'ANDROID', clientVersion: '19.44.38', androidSdkVersion: 30 },
+]
+
+async function fetchViaInnertube(videoId) {
+  const errors = []
+
+  for (const client of INNERTUBE_CLIENTS) {
+    try {
+      const res = await fetch('https://www.youtube.com/youtubei/v1/player?prettyPrint=false', {
+        method: 'POST',
+        headers: {
+          ...YT_HEADERS,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          context: { client: { ...client, hl: 'en', gl: 'US' } },
+          videoId,
+          contentCheckOk: true,
+          racyCheckOk: true,
+        }),
+      })
+
+      if (!res.ok) {
+        errors.push(`${client.clientName} HTTP ${res.status}`)
+        continue
+      }
+
+      const data = await res.json()
+      const publishedAt = dateFromMicroformat(data) || findDateInObject(data.microformat)
+      if (publishedAt) return publishedAt
+      errors.push(`${client.clientName} no date`)
+    } catch (err) {
+      errors.push(`${client.clientName} ${err instanceof Error ? err.message : 'failed'}`)
+    }
   }
 
-  const data = await res.json()
-  const publishedAt = dateFromMicroformat(data)
-  if (!publishedAt) throw new Error('No publish date in player API')
-  return publishedAt
+  throw new Error(`Player API failed (${errors.join('; ')})`)
 }
 
 async function fetchViaWatchPage(videoId) {
-  const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-      'Accept-Language': 'en-US,en;q=0.9',
-    },
+  const res = await fetch(`https://www.youtube.com/watch?v=${videoId}&bpctr=9999999999&has_verified=1`, {
+    headers: YT_HEADERS,
   })
 
   if (!res.ok) {
@@ -161,13 +200,20 @@ export async function fetchYoutubeMetadata(url) {
     }
   }
 
+  let playerError = ''
   try {
     const publishedAt = await fetchViaInnertube(videoId)
     return { videoId, publishedAt }
   } catch (err) {
-    console.warn('[youtube-metadata] Player API failed, falling back to watch page:', err.message)
+    playerError = err instanceof Error ? err.message : 'player API failed'
+    console.warn('[youtube-metadata] Player API failed, falling back to watch page:', playerError)
   }
 
-  const publishedAt = await fetchViaWatchPage(videoId)
-  return { videoId, publishedAt }
+  try {
+    const publishedAt = await fetchViaWatchPage(videoId)
+    return { videoId, publishedAt }
+  } catch (err) {
+    const watchError = err instanceof Error ? err.message : 'watch page failed'
+    throw new Error(`${playerError} / ${watchError}`)
+  }
 }
