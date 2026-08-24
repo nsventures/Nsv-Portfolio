@@ -95,13 +95,14 @@ const ADMIN_PAGE_SIZE = 1000
 
 /**
  * Each admin tab is ordered by sort_order so drag-and-drop is the source of
- * truth. The public VR tab uses the same column once 028 is applied.
+ * truth. Public VR/Videos tabs use the same column once 028/029 are applied.
  */
 function withAdminTabOrder(rows: PortfolioItemRow[]): PortfolioItemRow[] {
   const virtualTours = rows.filter((r) => r.media_type === 'virtual-tour')
   const videos = rows.filter((r) => r.media_type !== 'virtual-tour')
 
   virtualTours.sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
+  videos.sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
 
   return [...virtualTours, ...videos]
 }
@@ -181,24 +182,14 @@ export async function createTour(
 
   let sortOrder = item.sort_order
   if (sortOrder == null || sortOrder === 0) {
-    if (item.media_type === 'virtual-tour') {
-      const { data: first } = await supabase
-        .from('portfolio_items')
-        .select('sort_order')
-        .eq('media_type', 'virtual-tour')
-        .order('sort_order', { ascending: true })
-        .limit(1)
-        .maybeSingle()
-      sortOrder = (first?.sort_order ?? 0) - 1
-    } else {
-      const { data: last } = await supabase
-        .from('portfolio_items')
-        .select('sort_order')
-        .order('sort_order', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      sortOrder = (last?.sort_order ?? 0) + 1
-    }
+    const { data: first } = await supabase
+      .from('portfolio_items')
+      .select('sort_order')
+      .eq('media_type', item.media_type)
+      .order('sort_order', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    sortOrder = (first?.sort_order ?? 0) - 1
   }
 
   const { error } = await supabase
@@ -380,13 +371,6 @@ export async function duplicateTour(id: string): Promise<string> {
     }
   }
 
-  const { data: last } = await supabase
-    .from('portfolio_items')
-    .select('sort_order')
-    .order('sort_order', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
   await createTour({
     id: newId,
     name: `${tour.project_name?.trim() || tour.name} (Copy)`,
@@ -400,8 +384,9 @@ export async function duplicateTour(id: string): Promise<string> {
     media_type: tour.media_type,
     category: tour.category,
     is_published: false,
-    // 0 lets createTour place virtual tours at the top; videos still append.
-    sort_order: tour.media_type === 'virtual-tour' ? 0 : (last?.sort_order ?? 0) + 1,
+    video_published_at: tour.video_published_at ?? null,
+    // 0 lets createTour place the copy at #1 on its tab.
+    sort_order: 0,
   })
 
   return newId

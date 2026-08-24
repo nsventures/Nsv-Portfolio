@@ -399,8 +399,8 @@ async function processBulkImport(req, res) {
         continue
       }
 
-      let videoPublishedAt = null
-      if (resolvedMediaType === 'video') {
+      let videoPublishedAt = row.publishedAt || null
+      if (resolvedMediaType === 'video' && !videoPublishedAt) {
         try {
           const meta = await fetchYoutubeMetadata(link)
           videoPublishedAt = meta.publishedAt

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
-import { inferMediaTypeFromLink, isYoutubeLink } from '../../lib/portfolioLink'
+import { inferMediaTypeFromLink, isYoutubeLink, youtubeVideoId } from '../../lib/portfolioLink'
 import { slugify } from '../../lib/utils'
 import {
   createTour,
@@ -20,6 +20,12 @@ import {
   type YoutubePreviewResult,
 } from '../api/youtubePreview'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
+import { PublishedDateInput } from '../components/PublishedDateInput'
+import {
+  isoToYmd,
+  sameCalendarDay,
+  ymdToIso,
+} from '../../lib/publishedDateParts'
 import { INDIAN_STATES } from '../../data/indianStates'
 import {
   clearTourFormDraft,
@@ -41,6 +47,7 @@ const emptyForm: TourFormValues = {
   media_type: 'virtual-tour',
   is_published: true,
   sort_order: 0,
+  published_date: '',
 }
 
 export function TourFormPage() {
@@ -52,6 +59,8 @@ export function TourFormPage() {
   const serverLoaded = useRef(false)
   const previewRequest = useRef(0)
   const loadedLinkRef = useRef<string | null>(null)
+  const userEditedDate = useRef(false)
+  const lastVideoId = useRef<string | null>(null)
 
   const [form, setForm] = useState<TourFormValues>(() => {
     if (isEdit) return emptyForm
@@ -133,17 +142,20 @@ export function TourFormPage() {
           media_type: inferMediaTypeFromLink(link),
           is_published: tour.is_published,
           sort_order: tour.sort_order,
+          published_date: isoToYmd(tour.video_published_at),
         }
 
         serverLoaded.current = true
         setExistingCategory(tour.category)
         setExistingPublishedAt(tour.video_published_at ?? null)
+        userEditedDate.current = false
         setForm(
           draft && hasTourFormDraftContent(draft)
             ? {
                 ...draft,
                 sort_order: tour.sort_order,
                 media_type: inferMediaTypeFromLink(draft.link || tour.link),
+                published_date: draft.published_date || isoToYmd(tour.video_published_at),
               }
             : loaded,
         )
@@ -223,6 +235,27 @@ export function TourFormPage() {
     return () => window.clearTimeout(timer)
   }, [form.link, form.media_type, thumbFile, existingThumb])
 
+  useEffect(() => {
+    const videoId = youtubeVideoId(form.link.trim())
+    if (videoId !== lastVideoId.current) {
+      const hadPrevious = lastVideoId.current != null
+      lastVideoId.current = videoId
+      if (hadPrevious) {
+        userEditedDate.current = false
+        setForm((f) => ({ ...f, published_date: '' }))
+      }
+    }
+
+    if (form.media_type !== 'video' || userEditedDate.current) return
+
+    const fromYoutube = isoToYmd(ytPreview?.publishedAt)
+    const fromExisting = isoToYmd(existingPublishedAt)
+    const next = fromYoutube || fromExisting
+    if (!next) return
+
+    setForm((f) => (f.published_date === next ? f : { ...f, published_date: next }))
+  }, [form.link, form.media_type, ytPreview?.publishedAt, existingPublishedAt])
+
   const handleProjectNameChange = (projectName: string) => {
     setForm((f) => ({
       ...f,
@@ -258,12 +291,16 @@ export function TourFormPage() {
       }
 
       const projectName = form.project_name.trim()
+      const typedDate = ymdToIso(form.published_date)
+      const youtubeDate = ytPreview?.publishedAt ?? null
       const publishedAt =
-        form.media_type === 'video' && isYoutubeLink(link) && ytPreview?.publishedAt
-          ? ytPreview.publishedAt
-          : form.media_type === 'video'
-            ? existingPublishedAt
-            : null
+        form.media_type !== 'video'
+          ? null
+          : userEditedDate.current && typedDate
+            ? typedDate
+            : youtubeDate && (!form.published_date || sameCalendarDay(youtubeDate, form.published_date))
+              ? youtubeDate
+              : typedDate ?? existingPublishedAt
 
       const payload = {
         id: form.id.trim(),
@@ -312,6 +349,7 @@ export function TourFormPage() {
     thumbPreview ?? ytThumbSrc ?? getPortfolioThumbnail(existingThumb, thumbCacheKey || undefined)
   const hasThumbnail = Boolean(thumbPreview || ytThumbSrc || existingThumb)
   const publishedLabel =
+    formatYoutubePreviewDate(ymdToIso(form.published_date)) ??
     formatYoutubePreviewDate(ytPreview?.publishedAt) ??
     formatYoutubePreviewDate(existingPublishedAt)
 
@@ -456,8 +494,9 @@ export function TourFormPage() {
               />
               {form.media_type === 'video' && isYoutubeLink(form.link) && (
                 <p className="mt-2 text-xs text-slate-light">
-                  YouTube detected — thumbnail and publish date load in the preview (stored when you
-                  click {isEdit ? 'Save changes' : 'Create tour'}).
+                  YouTube detected — thumbnail and publish date fill automatically. Type the date
+                  below if fetch fails (stored when you click{' '}
+                  {isEdit ? 'Save changes' : 'Create tour'}).
                 </p>
               )}
               {form.media_type === 'virtual-tour' && (
@@ -513,6 +552,22 @@ export function TourFormPage() {
                 </p>
               </div>
             </div>
+
+            {form.media_type === 'video' && (
+              <div>
+                <PublishedDateInput
+                  value={form.published_date}
+                  onChange={(published_date) => {
+                    if (published_date !== form.published_date) userEditedDate.current = true
+                    setForm((f) => ({ ...f, published_date }))
+                  }}
+                />
+                <p className="mt-2 text-xs text-slate-light">
+                  Numbers only. Format is DD / MM / YYYY. YouTube fills this when the date is
+                  found; type over it if that fails.
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-6 pt-2">
               <label className="flex items-center gap-3 cursor-pointer">

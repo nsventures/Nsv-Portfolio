@@ -43,11 +43,13 @@ function PreviewCard({
 export function VrSitePreview({
   tours,
   saving,
+  mediaLabel = 'Virtual Reality',
   onConfirm,
   onCancel,
 }: {
   tours: PortfolioItemRow[]
   saving?: boolean
+  mediaLabel?: string
   onConfirm: () => void
   onCancel: () => void
 }) {
@@ -79,7 +81,7 @@ export function VrSitePreview({
               Site preview
             </p>
             <p className="mt-1 text-sm text-white/70">
-              This is how Virtual Reality will look. Nothing is saved until you confirm.
+              This is how {mediaLabel} will look. Nothing is saved until you confirm.
             </p>
           </div>
           <p className="text-xs text-white/50">{live.length} live</p>
@@ -87,7 +89,9 @@ export function VrSitePreview({
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
           {live.length === 0 ? (
-            <p className="py-8 text-center text-sm text-white/50">No published virtual tours yet.</p>
+            <p className="py-8 text-center text-sm text-white/50">
+              No published {mediaLabel === 'Videos' ? 'videos' : 'virtual tours'} yet.
+            </p>
           ) : (
             <div className={PREVIEW_GRID}>
               {live.map((tour, index) => (

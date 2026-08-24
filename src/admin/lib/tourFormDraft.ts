@@ -27,6 +27,7 @@ export function readTourFormDraft(key: string): TourFormValues | null {
       media_type: parsed.media_type === 'video' ? 'video' : 'virtual-tour',
       is_published: parsed.is_published ?? true,
       sort_order: parsed.sort_order ?? 0,
+      published_date: parsed.published_date ?? '',
     }
   } catch {
     return null

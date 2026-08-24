@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
+import { formatVideoPublishedDate } from '../../lib/formatVideoDate'
 import { getPortfolioThumbnail } from '../../lib/portfolioMedia'
 import {
   deleteTour,
@@ -39,7 +40,7 @@ export function ToursPage() {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [savingOrder, setSavingOrder] = useState(false)
-  const [pendingVrOrder, setPendingVrOrder] = useState<PortfolioItemRow[] | null>(null)
+  const [pendingOrder, setPendingOrder] = useState<PortfolioItemRow[] | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(focusId)
 
   const load = () => {
@@ -91,7 +92,7 @@ export function ToursPage() {
   const selectTab = (tab: MediaTab) => {
     setMediaTab(tab)
     tabPinned.current = true
-    if (tab !== 'virtual-tour') setPendingVrOrder(null)
+    setPendingOrder(null)
     const next = new URLSearchParams(searchParams)
     next.set('tab', tab)
     setSearchParams(next, { replace: true })
@@ -206,26 +207,21 @@ export function ToursPage() {
     const nextGroup = moveInGroup(dragId, toIndex, group)
     if (!nextGroup) return
 
-    if (mediaTab === 'virtual-tour') {
-      setPendingVrOrder(nextGroup)
-      return
-    }
-
-    await persistGroupOrder(nextGroup)
+    setPendingOrder(nextGroup)
   }
 
   const handleSortNumber = (id: string, nextPosition: number) => {
-    const group = tours.filter((t) => t.media_type === 'virtual-tour')
+    const group = tours.filter((t) => t.media_type === mediaTab)
     const toIndex = Math.max(0, Math.min(group.length - 1, Math.floor(nextPosition) - 1))
     const nextGroup = moveInGroup(id, toIndex, group)
     if (!nextGroup) return
-    setPendingVrOrder(nextGroup)
+    setPendingOrder(nextGroup)
   }
 
-  const confirmVrOrder = async () => {
-    if (!pendingVrOrder) return
-    await persistGroupOrder(pendingVrOrder)
-    setPendingVrOrder(null)
+  const confirmOrder = async () => {
+    if (!pendingOrder) return
+    await persistGroupOrder(pendingOrder)
+    setPendingOrder(null)
   }
 
   const selectClass =
@@ -239,9 +235,7 @@ export function ToursPage() {
           savingOrder
             ? 'Saving order…'
             : canReorder
-              ? mediaTab === 'virtual-tour'
-                ? `${filtered.length} virtual tours · change sort # to preview, then confirm`
-                : `${filtered.length} videos · drag ⠿ to reorder`
+              ? `${filtered.length} ${mediaTab === 'virtual-tour' ? 'virtual tours' : 'videos'} · change sort # to preview, then confirm`
               : `${filtered.length} of ${tabCounts[mediaTab]} ${mediaTab === 'virtual-tour' ? 'virtual tours' : 'videos'} · clear filters to reorder`
         }
         action={
@@ -327,11 +321,9 @@ export function ToursPage() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-border bg-off-white/80">
-                  {mediaTab === 'virtual-tour' && (
-                    <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider w-16">
-                      Sort
-                    </th>
-                  )}
+                  <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider w-16">
+                    Sort
+                  </th>
                   <th className="px-3 py-4 w-10" aria-label="Reorder" />
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider">
                     Preview
@@ -348,9 +340,11 @@ export function ToursPage() {
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden lg:table-cell">
                     City
                   </th>
-                  <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden xl:table-cell">
-                    Type
-                  </th>
+                  {mediaTab === 'video' && (
+                    <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider hidden xl:table-cell">
+                      Published
+                    </th>
+                  )}
                   <th className="px-3 py-4 font-semibold text-slate text-[10px] uppercase tracking-wider">
                     Status
                   </th>
@@ -364,7 +358,7 @@ export function ToursPage() {
                   <tr
                     key={tour.id}
                     id={`tour-row-${tour.id}`}
-                    draggable={canReorder && !pendingVrOrder}
+                    draggable={canReorder && !pendingOrder}
                     onDragStart={() => canReorder && setDragId(tour.id)}
                     onDragEnd={() => setDragId(null)}
                     onDragOver={(e) => canReorder && e.preventDefault()}
@@ -377,16 +371,14 @@ export function ToursPage() {
                           : 'hover:bg-off-white/50'
                     }`}
                   >
-                    {mediaTab === 'virtual-tour' && (
-                      <td className="px-3 py-4">
-                        <SortNumberInput
-                          value={index + 1}
-                          max={filtered.length}
-                          disabled={!canReorder || savingOrder || pendingVrOrder !== null}
-                          onCommit={(next) => handleSortNumber(tour.id, next)}
-                        />
-                      </td>
-                    )}
+                    <td className="px-3 py-4">
+                      <SortNumberInput
+                        value={index + 1}
+                        max={filtered.length}
+                        disabled={!canReorder || savingOrder || pendingOrder !== null}
+                        onCommit={(next) => handleSortNumber(tour.id, next)}
+                      />
+                    </td>
                     <td
                       className={`px-3 py-4 text-slate-light select-none ${
                         canReorder ? 'cursor-grab active:cursor-grabbing' : 'opacity-30'
@@ -425,11 +417,11 @@ export function ToursPage() {
                     <td className="px-3 py-4 text-slate hidden lg:table-cell">
                       {tour.city_label ?? tour.cities?.name ?? '—'}
                     </td>
-                    <td className="px-3 py-4 hidden xl:table-cell">
-                      <span className="inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-navy/5 text-navy">
-                        {tour.media_type === 'video' ? 'Video' : 'VR'}
-                      </span>
-                    </td>
+                    {mediaTab === 'video' && (
+                      <td className="px-3 py-4 text-slate hidden xl:table-cell whitespace-nowrap">
+                        {formatVideoPublishedDate(tour.video_published_at) ?? '—'}
+                      </td>
+                    )}
                     <td className="px-3 py-4">
                       <span
                         className={
@@ -475,12 +467,13 @@ export function ToursPage() {
         )}
       </AdminCard>
 
-      {pendingVrOrder && (
+      {pendingOrder && (
         <VrSitePreview
-          tours={pendingVrOrder}
+          tours={pendingOrder}
           saving={savingOrder}
-          onConfirm={() => void confirmVrOrder()}
-          onCancel={() => setPendingVrOrder(null)}
+          mediaLabel={mediaTab === 'video' ? 'Videos' : 'Virtual Reality'}
+          onConfirm={() => void confirmOrder()}
+          onCancel={() => setPendingOrder(null)}
         />
       )}
     </>

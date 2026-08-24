@@ -54,8 +54,8 @@ const PANEL_COPY: Record<
   },
   video: {
     sheetHint:
-      'For each sheet: optionally choose a state, then attach your YouTube CSV (Category + Title + Youtube Link). Leave state blank to list only under All states.',
-    fileHint: 'Builder + Project + City + Category + Youtube Link columns',
+      'For each sheet: optionally choose a state, then attach your YouTube CSV (Builder + Project + City + Category + Youtube Link + optional Published Date as DDMMYYYY). Leave state blank to list only under All states.',
+    fileHint: 'Builder + Project + City + Category + Youtube Link + Published Date (DDMMYYYY, optional)',
     thumbNote: 'Thumbnails: fetched from YouTube (original video poster).',
   },
 }

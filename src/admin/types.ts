@@ -37,6 +37,8 @@ export interface TourFormValues {
   media_type: 'video' | 'virtual-tour'
   is_published: boolean
   sort_order: number
+  /** YYYY-MM-DD from the DD / MM / YYYY field. Empty until complete. */
+  published_date: string
 }
 
 export interface PortfolioStats {

@@ -1,4 +1,5 @@
 import { isYoutubeLink } from '../../lib/portfolioLink'
+import { parsePublishedDateInput } from '../../lib/publishedDateParts'
 
 export interface BulkRow {
   name: string
@@ -7,6 +8,7 @@ export interface BulkRow {
   builderName?: string | null
   projectName?: string | null
   cityLabel?: string | null
+  publishedAt?: string | null
 }
 
 export type BulkSheetKind = 'tour' | 'video'
@@ -78,7 +80,8 @@ function resolveColumns(headers: string[]) {
     lower.some((h) => h.includes('category') || h.includes('catgor')) ||
     lower.some((h) => h.includes('builder')) ||
     lower.some((h) => h.includes('project')) ||
-    lower.some((h) => h.includes('city'))
+    lower.some((h) => h.includes('city')) ||
+    lower.some((h) => h.includes('publish') || h.includes('date'))
 
   const nameIdx = findColumnIndex(headers, [
     (h) => h === 'name',
@@ -109,7 +112,12 @@ function resolveColumns(headers: string[]) {
     (h) => h === 'city',
   ])
 
-  return { hasHeader, nameIdx, linkIdx, categoryIdx, builderIdx, projectIdx, cityIdx }
+  const publishedIdx = findColumnIndex(headers, [
+    (h) => h.includes('publish'),
+    (h) => h === 'date' || h.includes('published date'),
+  ])
+
+  return { hasHeader, nameIdx, linkIdx, categoryIdx, builderIdx, projectIdx, cityIdx, publishedIdx }
 }
 
 function cellValue(cols: string[], idx: number): string {
@@ -126,6 +134,7 @@ function rowsFromTable(
   builderIdx = -1,
   projectIdx = -1,
   cityIdx = -1,
+  publishedIdx = -1,
 ): BulkRow[] {
   if (linkIdx === -1) {
     throw new Error(
@@ -145,6 +154,7 @@ function rowsFromTable(
     const builderName = cellValue(cols, builderIdx)
     const cityLabel = cellValue(cols, cityIdx)
     const categoryRaw = cellValue(cols, categoryIdx)
+    const publishedAt = parsePublishedDateInput(cellValue(cols, publishedIdx))
 
     rows.push({
       name: projectName || nameFromLink(link),
@@ -153,6 +163,7 @@ function rowsFromTable(
       builderName: builderName || null,
       projectName: projectName || null,
       cityLabel: cityLabel || null,
+      publishedAt,
     })
   }
 
@@ -179,6 +190,7 @@ function resolveIndices(
     builderIdx,
     projectIdx,
     cityIdx,
+    publishedIdx,
   } = indices
 
   if (!hasHeader) {
@@ -193,7 +205,7 @@ function resolveIndices(
     }
   }
 
-  return { nameIdx, linkIdx, categoryIdx, builderIdx, projectIdx, cityIdx }
+  return { nameIdx, linkIdx, categoryIdx, builderIdx, projectIdx, cityIdx, publishedIdx }
 }
 
 export function parseBulkCsv(text: string, kind: BulkSheetKind = 'tour'): BulkRow[] {
@@ -215,6 +227,7 @@ export function parseBulkCsv(text: string, kind: BulkSheetKind = 'tour'): BulkRo
     indices.builderIdx,
     indices.projectIdx,
     indices.cityIdx,
+    indices.publishedIdx,
   )
 }
 
@@ -247,6 +260,7 @@ export async function parseBulkFile(file: File, kind: BulkSheetKind = 'tour'): P
       indices.builderIdx,
       indices.projectIdx,
       indices.cityIdx,
+      indices.publishedIdx,
     )
   }
 
