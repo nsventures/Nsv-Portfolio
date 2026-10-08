@@ -1,5 +1,23 @@
 import { youtubeVideoIdFromUrl } from './tour-import-utils.mjs'
 
+/**
+ * Publish-date lookup failure with a cause we can explain in the admin UI.
+ * `code` is one of NO_API_KEY | API_FAILED | INVALID_URL.
+ */
+export class YoutubeDateError extends Error {
+  constructor(message, { code, detail } = {}) {
+    super(message)
+    this.name = 'YoutubeDateError'
+    this.code = code
+    this.detail = detail
+  }
+}
+
+const NO_KEY_MESSAGE =
+  'YouTube blocked the publish-date lookup from the server. Set YOUTUBE_API_KEY in the ' +
+  'deployment environment (Vercel → Settings → Environment Variables), then redeploy — ' +
+  'or type the date in manually.'
+
 function extractJsonObject(source, openBraceIndex) {
   let depth = 0
   let inString = false
@@ -247,33 +265,49 @@ async function fetchViaWatchPage(videoId) {
 export async function fetchYoutubeMetadata(url) {
   const videoId = youtubeVideoIdFromUrl(url)
   if (!videoId) {
-    throw new Error('Invalid YouTube URL')
+    throw new YoutubeDateError('Invalid YouTube URL', { code: 'INVALID_URL' })
   }
 
   const apiKey = process.env.YOUTUBE_API_KEY?.trim()
+  let apiError = ''
   if (apiKey) {
     try {
       const publishedAt = await fetchViaDataApi(videoId, apiKey)
-      return { videoId, publishedAt }
+      return { videoId, publishedAt, source: 'data-api' }
     } catch (err) {
-      console.warn('[youtube-metadata] Data API failed, trying player API:', err.message)
+      apiError = err instanceof Error ? err.message : 'Data API failed'
+      console.warn('[youtube-metadata] Data API failed, trying player API:', apiError)
     }
   }
 
+  // Scraping fallbacks only work from residential IPs — YouTube serves a
+  // bot check to datacenter IPs (Vercel), so these fail in production.
   let playerError = ''
   try {
     const publishedAt = await fetchViaInnertube(videoId)
-    return { videoId, publishedAt }
+    return { videoId, publishedAt, source: 'player-api' }
   } catch (err) {
     playerError = err instanceof Error ? err.message : 'player API failed'
     console.warn('[youtube-metadata] Player API failed, falling back to watch page:', playerError)
   }
 
+  let watchError = ''
   try {
     const publishedAt = await fetchViaWatchPage(videoId)
-    return { videoId, publishedAt }
+    return { videoId, publishedAt, source: 'watch-page' }
   } catch (err) {
-    const watchError = err instanceof Error ? err.message : 'watch page failed'
-    throw new Error(`${playerError} / ${watchError}`)
+    watchError = err instanceof Error ? err.message : 'watch page failed'
   }
+
+  const detail = [apiError && `Data API: ${apiError}`, playerError, watchError]
+    .filter(Boolean)
+    .join(' / ')
+
+  if (!apiKey) {
+    throw new YoutubeDateError(NO_KEY_MESSAGE, { code: 'NO_API_KEY', detail })
+  }
+  throw new YoutubeDateError(
+    `YouTube Data API rejected the request (${apiError}) and the fallbacks were blocked.`,
+    { code: 'API_FAILED', detail },
+  )
 }

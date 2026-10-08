@@ -54,7 +54,7 @@ export function DashboardPage() {
             to="/admin/tours/new"
             className="inline-flex items-center rounded-full bg-cyan px-6 py-3 text-sm font-bold text-navy shadow-lg shadow-cyan/20 hover:bg-cyan-bright transition-colors"
           >
-            + Add tour
+            + Add tour/video
           </Link>
         }
       />

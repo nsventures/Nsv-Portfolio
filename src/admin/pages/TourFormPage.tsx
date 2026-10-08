@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
@@ -15,17 +15,13 @@ import {
 import {
   fetchYoutubePreview,
   fetchYoutubeThumbnailFile,
-  formatYoutubePreviewDate,
   youtubeThumbPreviewUrl,
   type YoutubePreviewResult,
 } from '../api/youtubePreview'
+import { formatVideoPublishedDate } from '../../lib/formatVideoDate'
 import { AdminCard, AdminPageHeader } from '../components/AdminLayout'
 import { PublishedDateInput } from '../components/PublishedDateInput'
-import {
-  isoToYmd,
-  sameCalendarDay,
-  ymdToIso,
-} from '../../lib/publishedDateParts'
+import { isoToYmd, ymdToIso } from '../../lib/publishedDateParts'
 import { INDIAN_STATES } from '../../data/indianStates'
 import {
   clearTourFormDraft,
@@ -59,7 +55,6 @@ export function TourFormPage() {
   const serverLoaded = useRef(false)
   const previewRequest = useRef(0)
   const loadedLinkRef = useRef<string | null>(null)
-  const userEditedDate = useRef(false)
   const lastVideoId = useRef<string | null>(null)
 
   const [form, setForm] = useState<TourFormValues>(() => {
@@ -67,7 +62,6 @@ export function TourFormPage() {
     return readTourFormDraft(draftKey) ?? emptyForm
   })
   const [existingCategory, setExistingCategory] = useState<string | null>(null)
-  const [existingPublishedAt, setExistingPublishedAt] = useState<string | null>(null)
   const [thumbFile, setThumbFile] = useState<File | null>(null)
   const [thumbPreview, setThumbPreview] = useState<string | null>(null)
   const [existingThumb, setExistingThumb] = useState<string | null>(null)
@@ -80,6 +74,8 @@ export function TourFormPage() {
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  /** Published-date box holds something that is not a real calendar date. */
+  const [dateInvalid, setDateInvalid] = useState(false)
   const [idTouched, setIdTouched] = useState(() => {
     if (isEdit) return true
     const draft = readTourFormDraft(draftKey)
@@ -147,8 +143,6 @@ export function TourFormPage() {
 
         serverLoaded.current = true
         setExistingCategory(tour.category)
-        setExistingPublishedAt(tour.video_published_at ?? null)
-        userEditedDate.current = false
         setForm(
           draft && hasTourFormDraftContent(draft)
             ? {
@@ -197,12 +191,7 @@ export function TourFormPage() {
       setYtPreview((prev) =>
         prev?.thumbnailUrl === instant
           ? prev
-          : {
-              videoId: prev?.videoId ?? '',
-              publishedAt: prev?.publishedAt ?? null,
-              thumbnailUrl: instant,
-              dateError: prev?.dateError,
-            },
+          : { videoId: prev?.videoId ?? '', thumbnailUrl: instant },
       )
       if (shouldAutoApplyThumb) setApplyYtThumbOnSave(true)
     }
@@ -216,16 +205,9 @@ export function TourFormPage() {
           setYtPreview(result)
           if (shouldAutoApplyThumb) setApplyYtThumbOnSave(true)
         })
-        .catch((err) => {
+        .catch(() => {
+          // Thumbnail preview already falls back to the CDN URL.
           if (previewRequest.current !== reqId) return
-          setYtPreview((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  dateError: err instanceof Error ? err.message : 'Preview failed',
-                }
-              : null,
-          )
         })
         .finally(() => {
           if (previewRequest.current === reqId) setYtLoading(false)
@@ -235,26 +217,19 @@ export function TourFormPage() {
     return () => window.clearTimeout(timer)
   }, [form.link, form.media_type, thumbFile, existingThumb])
 
+  // Swapping to a different video clears the hand-typed date so it is never
+  // carried over from the previous link.
   useEffect(() => {
     const videoId = youtubeVideoId(form.link.trim())
-    if (videoId !== lastVideoId.current) {
-      const hadPrevious = lastVideoId.current != null
-      lastVideoId.current = videoId
-      if (hadPrevious) {
-        userEditedDate.current = false
-        setForm((f) => ({ ...f, published_date: '' }))
-      }
-    }
+    if (videoId === lastVideoId.current) return
+    const hadPrevious = lastVideoId.current != null
+    lastVideoId.current = videoId
+    if (hadPrevious) setForm((f) => ({ ...f, published_date: '' }))
+  }, [form.link])
 
-    if (form.media_type !== 'video' || userEditedDate.current) return
-
-    const fromYoutube = isoToYmd(ytPreview?.publishedAt)
-    const fromExisting = isoToYmd(existingPublishedAt)
-    const next = fromYoutube || fromExisting
-    if (!next) return
-
-    setForm((f) => (f.published_date === next ? f : { ...f, published_date: next }))
-  }, [form.link, form.media_type, ytPreview?.publishedAt, existingPublishedAt])
+  const handlePublishedDateChange = useCallback((published_date: string) => {
+    setForm((f) => (f.published_date === published_date ? f : { ...f, published_date }))
+  }, [])
 
   const handleProjectNameChange = (projectName: string) => {
     setForm((f) => ({
@@ -269,6 +244,10 @@ export function TourFormPage() {
     e.preventDefault()
     if (!form.id.trim() || !form.project_name.trim() || !form.link.trim()) {
       setError('Project name, ID, and link are required.')
+      return
+    }
+    if (form.media_type === 'video' && dateInvalid) {
+      setError('Published date is not a valid calendar date. Fix DD / MM / YYYY or clear it.')
       return
     }
 
@@ -291,16 +270,8 @@ export function TourFormPage() {
       }
 
       const projectName = form.project_name.trim()
-      const typedDate = ymdToIso(form.published_date)
-      const youtubeDate = ytPreview?.publishedAt ?? null
-      const publishedAt =
-        form.media_type !== 'video'
-          ? null
-          : userEditedDate.current && typedDate
-            ? typedDate
-            : youtubeDate && (!form.published_date || sameCalendarDay(youtubeDate, form.published_date))
-              ? youtubeDate
-              : typedDate ?? existingPublishedAt
+      // Manual field is the only source: empty means "no date".
+      const publishedAt = form.media_type === 'video' ? ymdToIso(form.published_date) : null
 
       const payload = {
         id: form.id.trim(),
@@ -348,10 +319,10 @@ export function TourFormPage() {
   const previewSrc =
     thumbPreview ?? ytThumbSrc ?? getPortfolioThumbnail(existingThumb, thumbCacheKey || undefined)
   const hasThumbnail = Boolean(thumbPreview || ytThumbSrc || existingThumb)
-  const publishedLabel =
-    formatYoutubePreviewDate(ymdToIso(form.published_date)) ??
-    formatYoutubePreviewDate(ytPreview?.publishedAt) ??
-    formatYoutubePreviewDate(existingPublishedAt)
+  const publishedLabel = formatVideoPublishedDate(ymdToIso(form.published_date))
+  // Wording follows the selected media type: "video" vs "virtual tour".
+  const mediaNoun = form.media_type === 'video' ? 'video' : 'virtual tour'
+  const submitLabel = isEdit ? 'Save changes' : `Create ${mediaNoun}`
 
   const handleThumbFile = async (file: File | null) => {
     if (!file) return
@@ -395,8 +366,8 @@ export function TourFormPage() {
   return (
     <>
       <AdminPageHeader
-        title={isEdit ? 'Edit tour' : 'Add tour'}
-        subtitle={isEdit ? 'Update portfolio item' : 'Create a new video or virtual tour'}
+        title={`${isEdit ? 'Edit' : 'Add'} ${mediaNoun}`}
+        subtitle={isEdit ? `Update this ${mediaNoun}` : `Create a new ${mediaNoun}`}
         action={
           <Link
             to="/admin/tours"
@@ -494,9 +465,8 @@ export function TourFormPage() {
               />
               {form.media_type === 'video' && isYoutubeLink(form.link) && (
                 <p className="mt-2 text-xs text-slate-light">
-                  YouTube detected — thumbnail and publish date fill automatically. Type the date
-                  below if fetch fails (stored when you click{' '}
-                  {isEdit ? 'Save changes' : 'Create tour'}).
+                  YouTube detected — the thumbnail fills automatically. Enter the publish date
+                  yourself below (stored when you click {submitLabel}).
                 </p>
               )}
               {form.media_type === 'virtual-tour' && (
@@ -554,19 +524,11 @@ export function TourFormPage() {
             </div>
 
             {form.media_type === 'video' && (
-              <div>
-                <PublishedDateInput
-                  value={form.published_date}
-                  onChange={(published_date) => {
-                    if (published_date !== form.published_date) userEditedDate.current = true
-                    setForm((f) => ({ ...f, published_date }))
-                  }}
-                />
-                <p className="mt-2 text-xs text-slate-light">
-                  Numbers only. Format is DD / MM / YYYY. YouTube fills this when the date is
-                  found; type over it if that fails.
-                </p>
-              </div>
+              <PublishedDateInput
+                value={form.published_date}
+                onInvalidChange={setDateInvalid}
+                onChange={handlePublishedDateChange}
+              />
             )}
 
             <div className="flex flex-wrap gap-6 pt-2">
@@ -588,7 +550,7 @@ export function TourFormPage() {
               disabled={saving}
               className="rounded-full bg-cyan px-8 py-3.5 text-sm font-bold text-navy shadow-lg shadow-cyan/20 hover:bg-cyan-bright transition-colors disabled:opacity-60"
             >
-              {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create tour'}
+              {saving ? 'Saving…' : submitLabel}
             </button>
             <Link
               to="/admin/tours"
@@ -609,12 +571,12 @@ export function TourFormPage() {
               <img src={previewSrc} alt="" className="w-full h-full object-cover" />
               {ytLoading && (
                 <div className="absolute inset-x-0 bottom-0 bg-navy/70 px-3 py-2 text-[11px] font-semibold text-white">
-                  Fetching YouTube details…
+                  Loading YouTube thumbnail…
                 </div>
               )}
             </div>
 
-            {(publishedLabel || ytPreview?.dateError || applyYtThumbOnSave) && (
+            {(publishedLabel || applyYtThumbOnSave) && (
               <div className="mb-4 rounded-xl border border-border bg-off-white px-3 py-3 text-xs text-navy space-y-1">
                 {publishedLabel ? (
                   <p>
@@ -623,19 +585,11 @@ export function TourFormPage() {
                     </span>
                     <br />
                     <span className="text-sm font-semibold">{publishedLabel}</span>
-                    {ytPreview?.publishedAt && (
-                      <span className="block text-[11px] text-slate-light mt-0.5">
-                        {new Date(ytPreview.publishedAt).toLocaleString('en-IN')}
-                      </span>
-                    )}
                   </p>
-                ) : ytPreview?.dateError ? (
-                  <p className="text-amber-700">{ytPreview.dateError}</p>
                 ) : null}
                 {applyYtThumbOnSave && !thumbFile && (
                   <p className="text-slate-light">
-                    YouTube thumbnail ready — applies when you click{' '}
-                    {isEdit ? 'Save changes' : 'Create tour'}.
+                    YouTube thumbnail ready — applies when you click {submitLabel}.
                   </p>
                 )}
               </div>

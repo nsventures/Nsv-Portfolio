@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 
 import {
-  digitsOnly,
+  padDatePart,
+  padParts,
+  partsAreInvalid,
   partsToYmd,
+  sanitizeDatePart,
   ymdToParts,
   type DateParts,
 } from '../../lib/publishedDateParts'
@@ -16,27 +19,42 @@ const FIELDS: { key: keyof DateParts; label: string; maxLen: number; width: stri
 export function PublishedDateInput({
   value,
   onChange,
+  onInvalidChange,
   disabled,
 }: {
   value: string
   onChange: (ymd: string) => void
+  onInvalidChange?: (invalid: boolean) => void
   disabled?: boolean
 }) {
   const [parts, setParts] = useState<DateParts>(() => ymdToParts(value))
+  const partsRef = useRef(parts)
   const focused = useRef(false)
   const dayRef = useRef<HTMLInputElement>(null)
   const monthRef = useRef<HTMLInputElement>(null)
   const yearRef = useRef<HTMLInputElement>(null)
   const refs = { day: dayRef, month: monthRef, year: yearRef }
 
+  // Only flag the field once the user has left it — not on every keystroke.
+  const [blurred, setBlurred] = useState(false)
+  const invalid = partsAreInvalid(parts)
+  const showError = invalid && blurred
+
   useEffect(() => {
     if (focused.current) return
-    setParts(ymdToParts(value))
+    const next = ymdToParts(value)
+    partsRef.current = next
+    setParts(next)
   }, [value])
 
-  const commit = (next: DateParts) => {
+  useEffect(() => {
+    onInvalidChange?.(invalid)
+  }, [invalid, onInvalidChange])
+
+  const emit = (next: DateParts) => {
+    partsRef.current = next
     setParts(next)
-    onChange(partsToYmd(next))
+    onChange(partsToYmd(padParts(next)))
   }
 
   const focusNext = (key: keyof DateParts) => {
@@ -45,10 +63,13 @@ export function PublishedDateInput({
   }
 
   return (
-    <div>
+    <div data-published-date>
       <label className="block text-[10px] uppercase tracking-[0.25em] text-slate font-semibold mb-2">
         Published date
       </label>
+      <p className="-mt-1 mb-2 text-[11px] text-slate-light">
+        Enter the date shown on YouTube — it saves exactly as typed.
+      </p>
       <div className="flex items-end gap-2">
         {FIELDS.map((field, index) => (
           <div key={field.key} className="flex items-end gap-2">
@@ -60,30 +81,51 @@ export function PublishedDateInput({
             <div>
               <input
                 ref={refs[field.key]}
+                type="text"
                 inputMode="numeric"
                 autoComplete="off"
                 disabled={disabled}
                 maxLength={field.maxLen}
                 aria-label={field.label}
+                aria-invalid={showError || undefined}
                 placeholder={field.label}
                 value={parts[field.key]}
-                onFocus={() => {
+                onFocus={(e) => {
                   focused.current = true
+                  setBlurred(false)
+                  e.currentTarget.select()
                 }}
-                onBlur={() => {
+                onBlur={(e) => {
+                  const root = e.currentTarget.closest('[data-published-date]')
+                  const next = e.relatedTarget
+                  // Pad "6" -> "06" even when focus stays inside the field group.
+                  const padded = {
+                    ...partsRef.current,
+                    [field.key]: padDatePart(field.key, partsRef.current[field.key]),
+                  }
+                  if (padded[field.key] !== partsRef.current[field.key]) {
+                    partsRef.current = padded
+                    setParts(padded)
+                  }
+                  if (next instanceof Node && root?.contains(next)) return
                   focused.current = false
-                  commit({
-                    ...parts,
-                    [field.key]: parts[field.key],
-                  })
+                  setBlurred(true)
+                  onChange(partsToYmd(padParts(partsRef.current)))
                 }}
                 onChange={(e) => {
-                  const nextValue = digitsOnly(e.target.value, field.maxLen)
-                  const next = { ...parts, [field.key]: nextValue }
-                  commit(next)
-                  if (nextValue.length === field.maxLen) focusNext(field.key)
+                  const { value: nextValue, complete } = sanitizeDatePart(
+                    field.key,
+                    e.target.value,
+                    partsRef.current[field.key],
+                  )
+                  emit({ ...partsRef.current, [field.key]: nextValue })
+                  if (complete) focusNext(field.key)
                 }}
-                className={`${field.width} rounded-xl border border-border bg-off-white px-2 py-3.5 text-center text-navy font-semibold tracking-wider focus:outline-none focus:border-cyan focus:ring-2 focus:ring-cyan/20 disabled:opacity-60`}
+                className={`${field.width} rounded-xl border bg-off-white px-2 py-3.5 text-center text-navy font-semibold tracking-wider focus:outline-none focus:ring-2 disabled:opacity-60 ${
+                  showError
+                    ? 'border-amber-500 focus:border-amber-500 focus:ring-amber-500/20'
+                    : 'border-border focus:border-cyan focus:ring-cyan/20'
+                }`}
               />
               <p className="mt-1 text-center text-[10px] font-semibold uppercase tracking-wider text-slate-light">
                 {field.label}
@@ -92,8 +134,10 @@ export function PublishedDateInput({
           </div>
         ))}
       </div>
-      {parts.day && parts.month && parts.year.length === 4 && !partsToYmd(parts) && (
-        <p className="mt-2 text-xs text-amber-700">Enter a valid calendar date.</p>
+      {showError && (
+        <p className="mt-2 text-xs text-amber-700">
+          Enter a full, valid calendar date as DD / MM / YYYY (year 1990–2100).
+        </p>
       )}
     </div>
   )

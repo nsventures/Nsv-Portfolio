@@ -16,7 +16,7 @@ const navItems = [
       pathname === '/admin/tours' ||
       (pathname.startsWith('/admin/tours/') && pathname !== '/admin/tours/new'),
   },
-  { to: '/admin/tours/new', label: 'Add tour', end: true },
+  { to: '/admin/tours/new', label: 'Add tour/video', end: true },
   { to: '/admin/cities', label: 'Cities', end: true },
   { to: '/admin/bulk-upload', label: 'Bulk upload', end: true },
 ] as const

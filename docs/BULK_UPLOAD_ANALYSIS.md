@@ -81,7 +81,7 @@ Every import requires a valid **admin** Supabase JWT (`Authorization: Bearer …
 | UI kind | `mediaType` sent to server | Typical sheet |
 |---------|----------------------------|---------------|
 | Virtual tours | `virtual-tour` | Name + Link (tour URLs) |
-| YouTube videos | `video` | Category, Builder, Project, City, Youtube Link |
+| YouTube videos | `video` | Category, Builder, Project, City, Youtube Link, Published Date (optional) |
 
 **Override:** if the link is a YouTube URL, the server always stores `media_type = video`, even if the VR tab was used.
 
@@ -158,6 +158,9 @@ Matchers are case-insensitive; first match wins.
 | `builderName` | includes `builder` |
 | `cityLabel` | includes `city name` → exact `city` |
 | `category` | includes `category` or `catgor` |
+| `publishedAt` | includes `publish` → exact `date` |
+
+`publishedAt` accepts `DDMMYYYY` (e.g. `10082026`), `DD/MM/YYYY`, ISO dates, or an Excel date cell. When it is set, the server stores it as `video_published_at` and skips the YouTube date lookup for that row. When it is blank or invalid, the server fetches the date from YouTube as before.
 
 Resolved project display name:
 

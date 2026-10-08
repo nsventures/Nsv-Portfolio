@@ -1,11 +1,9 @@
 import { isYoutubeLink, youtubeVideoId } from '../../lib/portfolioLink'
-import { formatVideoPublishedDate } from '../../lib/formatVideoDate'
 
+/** Thumbnail only — the publish date is entered by hand in the admin form. */
 export interface YoutubePreviewResult {
   videoId: string
-  publishedAt: string | null
   thumbnailUrl: string
-  dateError?: string
 }
 
 /** Same-origin Vercel/Vite `/api/youtube` — not the bulk-import server. */
@@ -37,19 +35,15 @@ export async function fetchYoutubePreview(link: string): Promise<YoutubePreviewR
     ok?: boolean
     error?: string
     videoId?: string
-    publishedAt?: string | null
     thumbnailUrl?: string
-    dateError?: string
   }
 
   if (!res.ok || body.ok === false) {
-    // Still allow local thumb preview when date API is offline
+    // Still show the CDN thumbnail when the preview endpoint is offline.
     if (fallbackThumb) {
       return {
         videoId: youtubeVideoId(trimmed) ?? '',
-        publishedAt: null,
         thumbnailUrl: fallbackThumb,
-        dateError: body.error ?? 'Publish date unavailable',
       }
     }
     throw new Error(body.error ?? `Preview failed (${res.status})`)
@@ -57,9 +51,7 @@ export async function fetchYoutubePreview(link: string): Promise<YoutubePreviewR
 
   return {
     videoId: body.videoId ?? youtubeVideoId(trimmed) ?? '',
-    publishedAt: body.publishedAt ?? null,
     thumbnailUrl: body.thumbnailUrl ?? fallbackThumb ?? '',
-    dateError: body.dateError,
   }
 }
 
@@ -77,8 +69,4 @@ export async function fetchYoutubeThumbnailFile(link: string): Promise<File> {
 
   const blob = await res.blob()
   return new File([blob], `${id}.jpg`, { type: blob.type || 'image/jpeg' })
-}
-
-export function formatYoutubePreviewDate(iso: string | null | undefined): string | null {
-  return formatVideoPublishedDate(iso)
 }

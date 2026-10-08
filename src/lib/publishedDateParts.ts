@@ -12,6 +12,103 @@ export function digitsOnly(value: string, maxLen: number): string {
   return value.replace(/\D/g, '').slice(0, maxLen)
 }
 
+/** Keep only a day that can become 01–31. `5` becomes `05`; `55` is rejected. */
+export function sanitizeDayInput(raw: string): { value: string; complete: boolean } {
+  const digits = digitsOnly(raw, 2)
+  if (!digits) return { value: '', complete: false }
+  if (digits.length === 1) {
+    const n = Number(digits)
+    if (n >= 4) return { value: digits.padStart(2, '0'), complete: true }
+    return { value: digits, complete: false }
+  }
+  const n = Number(digits)
+  if (n >= 1 && n <= 31) return { value: String(n).padStart(2, '0'), complete: true }
+  return { value: digits[0] <= '3' ? digits[0] : '', complete: false }
+}
+
+/** Keep only a month that can become 01–12. `2` becomes `02`; `22` is rejected. */
+export function sanitizeMonthInput(raw: string): { value: string; complete: boolean } {
+  const digits = digitsOnly(raw, 2)
+  if (!digits) return { value: '', complete: false }
+  if (digits.length === 1) {
+    const n = Number(digits)
+    if (n >= 2) return { value: digits.padStart(2, '0'), complete: true }
+    return { value: digits, complete: false }
+  }
+  const n = Number(digits)
+  if (n >= 1 && n <= 12) return { value: String(n).padStart(2, '0'), complete: true }
+  return { value: digits[0] === '0' || digits[0] === '1' ? digits[0] : '', complete: false }
+}
+
+/** Year must be 1990–2100 when complete. */
+export function sanitizeYearInput(raw: string): { value: string; complete: boolean } {
+  const digits = digitsOnly(raw, 4)
+  if (digits.length < 4) return { value: digits, complete: false }
+  const n = Number(digits)
+  if (n >= 1990 && n <= 2100) return { value: digits, complete: true }
+  return { value: digits.slice(0, 3), complete: false }
+}
+
+const MAX_PART = { day: 31, month: 12, year: 2100 } as const
+
+/**
+ * Keystroke guard for one DD / MM / YYYY box. Impossible input is rejected
+ * instead of displayed, so "66" can never land in the day field:
+ *  - a lone digit that can only be a zero-prefixed value is padded (6 -> 06)
+ *  - a second digit that would push the box out of range is dropped
+ *  - the year must start with 1 or 2
+ * `complete` says the box is full, so the caller can advance focus.
+ */
+export function sanitizeDatePart(
+  key: keyof DateParts,
+  raw: string,
+  previous: string,
+): { value: string; complete: boolean } {
+  const maxLen = key === 'year' ? 4 : 2
+  const digits = digitsOnly(raw, maxLen)
+  const reject = { value: previous, complete: previous.length === maxLen }
+
+  if (!digits) return { value: '', complete: false }
+
+  if (key === 'year') {
+    if (digits[0] !== '1' && digits[0] !== '2') return reject
+    return { value: digits, complete: digits.length === 4 }
+  }
+
+  const max = MAX_PART[key]
+  if (digits.length === 1) {
+    const first = Number(digits)
+    // 4..9 as a day (or 2..9 as a month) can only mean 04..09 / 02..09.
+    if (first > Math.floor(max / 10)) return { value: `0${digits}`, complete: true }
+    return { value: digits, complete: false }
+  }
+
+  const value = Number(digits)
+  if (value < 1 || value > max) return reject
+  return { value: digits, complete: true }
+}
+
+/** Blur normaliser: a lone day/month digit becomes two digits (6 -> 06). */
+export function padDatePart(key: keyof DateParts, value: string): string {
+  if (key === 'year' || value.length !== 1 || value === '0') return value
+  return `0${value}`
+}
+
+export function padParts(parts: DateParts): DateParts {
+  return {
+    day: padDatePart('day', parts.day),
+    month: padDatePart('month', parts.month),
+    year: parts.year,
+  }
+}
+
+/** True when the field holds something the user typed that is not a real date. */
+export function partsAreInvalid(parts: DateParts): boolean {
+  const padded = padParts(parts)
+  const hasInput = Boolean(padded.day || padded.month || padded.year)
+  return hasInput && !partsToYmd(padded)
+}
+
 export function ymdToParts(ymd: string | null | undefined): DateParts {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd?.trim() ?? '')
   if (!match) return { ...EMPTY }
@@ -47,7 +144,8 @@ export function partsToYmd(parts: DateParts): string {
   const month = digitsOnly(parts.month, 2)
   const year = digitsOnly(parts.year, 4)
   if (day.length === 0 && month.length === 0 && year.length === 0) return ''
-  if (day.length < 1 || month.length < 1 || year.length !== 4) return ''
+  // Require 2-digit day/month so typing "1" for October does not lock as "01".
+  if (day.length !== 2 || month.length !== 2 || year.length !== 4) return ''
 
   const y = Number(year)
   const m = Number(month)
