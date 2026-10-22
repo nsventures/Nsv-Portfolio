@@ -4,8 +4,12 @@ import { cn } from '../../lib/utils'
 
 interface MagneticButtonProps extends HTMLMotionProps<'button'> {
   children: ReactNode
-  variant?: 'primary' | 'secondary' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost'
   size?: 'sm' | 'md' | 'lg' | 'xl'
+  /** Sweep a colour fill in from the left edge on hover. */
+  wave?: boolean
+  /** Pull the button toward the pointer. Off by default when `wave` is set. */
+  magnetic?: boolean
 }
 
 const variants = {
@@ -13,6 +17,9 @@ const variants = {
     'bg-cyan text-navy hover:bg-cyan-bright border border-transparent font-semibold rounded-full shadow-lg shadow-cyan/20',
   secondary:
     'bg-transparent text-white border border-white/30 hover:border-cyan hover:text-cyan rounded-full font-semibold',
+  // Same shape as `secondary`, for light backgrounds.
+  outline:
+    'bg-white text-navy border border-navy/15 hover:border-cyan rounded-full font-semibold shadow-sm shadow-navy/5',
   ghost: 'bg-transparent text-navy/70 hover:text-cyan border border-transparent',
 }
 
@@ -27,6 +34,8 @@ export function MagneticButton({
   children,
   variant = 'primary',
   size = 'md',
+  wave = false,
+  magnetic = !wave,
   className,
   ...props
 }: MagneticButtonProps) {
@@ -34,7 +43,7 @@ export function MagneticButton({
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     const btn = ref.current
-    if (!btn) return
+    if (!btn || !magnetic) return
     const rect = btn.getBoundingClientRect()
     const x = e.clientX - rect.left - rect.width / 2
     const y = e.clientY - rect.top - rect.height / 2
@@ -43,7 +52,7 @@ export function MagneticButton({
 
   const handleMouseLeave = () => {
     const btn = ref.current
-    if (!btn) return
+    if (!btn || !magnetic) return
     btn.style.transform = 'translate(0, 0)'
   }
 
@@ -54,6 +63,7 @@ export function MagneticButton({
         'relative inline-flex items-center justify-center transition-colors duration-400',
         variants[variant],
         sizes[size],
+        wave && 'btn-wave',
         className,
       )}
       onMouseMove={handleMouseMove}
@@ -62,7 +72,8 @@ export function MagneticButton({
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       {...props}
     >
-      {children}
+      {wave && <span className="btn-wave-fill" aria-hidden />}
+      <span className="relative z-10">{children}</span>
     </motion.button>
   )
 }

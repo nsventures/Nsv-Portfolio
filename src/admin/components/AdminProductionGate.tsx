@@ -19,20 +19,24 @@ export function AdminProductionGate({ children }: AdminProductionGateProps) {
     return <>{children}</>
   }
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     setSubmitting(true)
     setError(null)
 
-    const ok = unlockAdminGate(password)
-    if (ok) {
-      setUnlocked(true)
-      setPassword('')
-    } else {
-      setError('Incorrect password.')
+    try {
+      const ok = await unlockAdminGate(password)
+      if (ok) {
+        setUnlocked(true)
+        setPassword('')
+      } else {
+        setError('Incorrect password.')
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not check the password.')
+    } finally {
+      setSubmitting(false)
     }
-
-    setSubmitting(false)
   }
 
   return (
@@ -44,7 +48,7 @@ export function AdminProductionGate({ children }: AdminProductionGateProps) {
           Enter the admin gate password to continue.
         </p>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <form onSubmit={(event) => void handleSubmit(event)} className="mt-6 space-y-4">
           <div>
             <label
               htmlFor="admin-gate-password"

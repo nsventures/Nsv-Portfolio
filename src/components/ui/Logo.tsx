@@ -3,6 +3,8 @@ import { cn } from '../../lib/utils'
 type LogoProps = {
   className?: string
   size?: 'sm' | 'md' | 'lg' | 'xl'
+  /** 'light' = white wordmark for dark backgrounds, 'dark' = navy wordmark for light ones. */
+  tone?: 'light' | 'dark'
 }
 
 const sizeClasses = {
@@ -12,10 +14,10 @@ const sizeClasses = {
   xl: 'h-16',
 } as const
 
-export function Logo({ className, size = 'md' }: LogoProps) {
+export function Logo({ className, size = 'md', tone = 'light' }: LogoProps) {
   return (
     <img
-      src="/logo.png"
+      src={tone === 'dark' ? '/logo_black.png' : '/logo.png'}
       alt="NS Ventures"
       className={cn(
         sizeClasses[size],

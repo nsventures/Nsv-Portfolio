@@ -3,6 +3,11 @@ import { Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 import { Logo } from '../../components/ui/Logo'
+import {
+  beginPasswordRecovery,
+  endPasswordRecovery,
+  isPasswordRecovery,
+} from '../../lib/authRecovery'
 import { getSupabase } from '../../lib/supabase'
 import { cn } from '../../lib/utils'
 import { useAdminAuthContext } from '../context/AdminAuthContext'
@@ -12,7 +17,9 @@ type Mode = 'login' | 'forgot' | 'new-password'
 export function LoginPage() {
   const { session, isAdmin, signIn, resetPassword, updatePassword, loading, error } =
     useAdminAuthContext()
-  const [mode, setMode] = useState<Mode>('login')
+  const [mode, setMode] = useState<Mode>(() =>
+    isPasswordRecovery() ? 'new-password' : 'login',
+  )
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -27,6 +34,7 @@ export function LoginPage() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
+        beginPasswordRecovery()
         setMode('new-password')
         setSuccess(null)
         setLocalError(null)
@@ -35,7 +43,7 @@ export function LoginPage() {
     return () => subscription.unsubscribe()
   }, [])
 
-  if (!loading && session && isAdmin && mode !== 'new-password') {
+  if (!loading && session && isAdmin && mode !== 'new-password' && !isPasswordRecovery()) {
     return <Navigate to="/admin" replace />
   }
 
@@ -82,6 +90,7 @@ export function LoginPage() {
     setSubmitting(true)
     try {
       await updatePassword(newPassword)
+      endPasswordRecovery()
       setSuccess('Password updated. You can sign in now.')
       setMode('login')
       setPassword('')
@@ -244,6 +253,8 @@ export function LoginPage() {
             <button
               type="button"
               onClick={() => {
+                // Backing out of the recovery form shouldn't strand the user there.
+                endPasswordRecovery()
                 setMode('login')
                 setLocalError(null)
                 setSuccess(null)

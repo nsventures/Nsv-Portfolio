@@ -6,6 +6,7 @@ import { AdminLayout } from './components/AdminLayout'
 import { BulkImportProvider } from './context/BulkImportContext'
 import { AdminAuthProvider } from './context/AdminAuthContext'
 import { BulkUploadPage } from './pages/BulkUploadPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { CitiesPage } from './pages/CitiesPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { LoginPage } from './pages/LoginPage'
@@ -48,6 +49,7 @@ export default function AdminApp() {
           <Route path="tours/:id/edit" element={<TourFormPage />} />
           <Route path="cities" element={<CitiesPage />} />
           <Route path="bulk-upload" element={<BulkUploadPage />} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/admin" replace />} />

@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useScrollPosition } from '../../hooks/useMotion'
 import { cn } from '../../lib/utils'
@@ -130,9 +131,41 @@ function SocialIconRow({
 
 export function Navbar({ onCallbackClick }: NavbarProps) {
   const scrolled = useScrollPosition()
+  const headerRef = useRef<HTMLElement>(null)
+  // The portfolio section sits behind a darker bar — the white wordmark reads there.
+  const [overPortfolio, setOverPortfolio] = useState(false)
+
+  useEffect(() => {
+    let frame = 0
+    const check = () => {
+      frame = 0
+      // Looked up per check — the section mounts after the portfolio data loads.
+      const section = document.getElementById('portfolio')
+      if (!section) {
+        setOverPortfolio(false)
+        return
+      }
+      const band = headerRef.current?.getBoundingClientRect().bottom ?? 80
+      const rect = section.getBoundingClientRect()
+      setOverPortfolio(rect.top <= band && rect.bottom >= band)
+    }
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(check)
+    }
+
+    check()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      if (frame) cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+    }
+  }, [])
 
   return (
     <motion.header
+      ref={headerRef}
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-500',
         scrolled
@@ -159,6 +192,8 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
           >
             <Logo
               size="md"
+              /* Navy over the light hero, white once the portfolio section is behind the bar. */
+              tone={overPortfolio ? 'light' : 'dark'}
               className={cn(
                 'h-9 w-auto max-w-[min(42vw,9.5rem)] transition-[height,max-width] duration-300',
                 'min-[400px]:max-w-none min-[400px]:h-10',

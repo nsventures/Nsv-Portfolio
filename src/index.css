@@ -442,9 +442,8 @@
 .hero-stats-value-row {
   display: flex;
   align-items: flex-end;
-  justify-content: center;
   width: 100%;
-  min-height: 2.75rem;
+  min-height: 2.5rem;
 }
 
 @media (min-width: 768px) {
@@ -454,16 +453,246 @@
 }
 
 .hero-stats-value {
-  color: var(--color-gold);
-  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.35);
+  color: var(--color-navy);
   display: block;
   line-height: 1 !important;
-  font-size: clamp(1.55rem, 3.4vw, 2.5rem) !important;
+  font-size: clamp(1.75rem, 4vw, 3rem) !important;
   text-align: center;
 }
 
 .hero-stats-label {
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+  color: var(--color-slate);
+}
+
+/* Mobile: the stats read as one bordered card with hairline dividers. */
+@media (max-width: 767px) {
+  .hero-stats-inner {
+    align-items: stretch;
+    grid-auto-rows: 1fr;
+  }
+
+  /* Bottom-align every value so the labels below all start on one line,
+     even where the value wraps to two lines. */
+  .hero-stats-item {
+    justify-content: flex-start;
+  }
+
+  .hero-stats-value-row {
+    align-items: flex-end;
+    justify-content: center;
+    min-height: 2rem;
+  }
+
+  .hero-stats-value {
+    font-size: 1.45rem !important;
+    letter-spacing: -0.01em;
+  }
+
+  .hero-stats-label {
+    opacity: 0.85;
+  }
+}
+
+/* Hero CTAs: compact, evenly weighted pills on small screens. */
+@media (max-width: 639px) {
+  .hero-cta {
+    letter-spacing: 0.02em;
+    box-shadow: 0 6px 16px -12px rgba(10, 22, 51, 0.5);
+  }
+
+  .hero-cta.border-cyan {
+    box-shadow: 0 8px 18px -12px rgba(0, 174, 239, 0.8);
+  }
+}
+
+/* Client logo marquee ------------------------------------------------------ */
+
+.logo-marquee {
+  position: relative;
+  overflow: hidden;
+  /* Room for the hover scale — overflow:hidden would otherwise slice the
+     top of row one and the bottom of row two. */
+  padding-block: clamp(0.625rem, 1.6vh, 1rem);
+  /* Feather both ends so logos enter and leave instead of being cut off.
+     Safari only honours the prefixed property — without it the strip hard-cuts. */
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 10%,
+    #000 90%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 10%,
+    #000 90%,
+    transparent 100%
+  );
+}
+
+/*
+ * Full-bleed out of the centred hero container. 100vw counts the classic
+ * scrollbar, which would push the right edge underneath it, so subtract the
+ * measured width (--scrollbar-w, 0 on overlay-scrollbar platforms).
+ */
+.logo-marquee--bleed {
+  --bleed-w: calc(100vw - var(--scrollbar-w, 0px));
+  width: var(--bleed-w);
+  max-width: var(--bleed-w);
+  margin-left: calc(50% - var(--bleed-w) / 2);
+}
+
+.logo-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: logo-marquee-scroll 60s linear infinite;
+}
+
+.logo-marquee-track + .logo-marquee-track {
+  margin-top: clamp(1rem, 3.2vh, 2.75rem);
+}
+
+/* Second row drifts the other way. */
+.logo-marquee-track--reverse {
+  animation-direction: reverse;
+}
+
+.logo-marquee:hover .logo-marquee-track {
+  animation-play-state: paused;
+}
+
+.logo-marquee-list {
+  display: flex;
+  align-items: center;
+  gap: 3.5rem;
+  padding-right: 3.5rem;
+  margin: 0;
+  list-style: none;
+}
+
+@keyframes logo-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    /* One copy of the list — the second copy takes its place seamlessly. */
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 767px) {
+  .logo-marquee-track + .logo-marquee-track {
+    margin-top: 2.25rem;
+  }
+
+  .logo-marquee-list {
+    gap: 1.75rem;
+    padding-right: 1.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-marquee-track {
+    animation: none;
+  }
+
+  .logo-marquee {
+    overflow-x: auto;
+  }
+}
+
+/* Wave-fill button -------------------------------------------------------- */
+
+.btn-wave {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  /* Leaving: snap the label back as the panel retreats. */
+  transition: color 220ms ease, border-color 400ms ease;
+}
+
+/* Colour panel that slides in from the left. */
+.btn-wave-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--color-cyan);
+  transform: translateX(calc(-100% - 30px));
+  transition: transform 800ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/*
+ * Its leading edge is a 30x40 sine tile repeated down the button; scrolling the
+ * background-position by one tile makes the crest ripple as the panel travels.
+ */
+.btn-wave-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: -29px;
+  width: 30px;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='40' viewBox='0 0 30 40'%3E%3Cpath d='M0 0 H15 Q30 10 15 20 Q0 30 15 40 H0 Z' fill='%2329abe2'/%3E%3C/svg%3E");
+  background-repeat: repeat-y;
+  background-size: 30px 40px;
+  animation: btn-wave-ripple 800ms linear infinite;
+}
+
+.btn-wave:hover,
+.btn-wave:focus-visible {
+  color: #ffffff;
+  /* Hold the dark label until the crest has swept past it. */
+  transition: color 240ms ease 300ms, border-color 400ms ease;
+}
+
+.btn-wave:hover .btn-wave-fill,
+.btn-wave:focus-visible .btn-wave-fill {
+  transform: translateX(0);
+}
+
+@keyframes btn-wave-ripple {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 0 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-wave-fill {
+    transition-duration: 1ms;
+  }
+
+  .btn-wave-fill::after {
+    animation: none;
+  }
+}
+
+/* Drone cursor ------------------------------------------------------------ */
+
+/*
+ * Front-on rotors: a Y-axis spin with no perspective foreshortens the blade to
+ * a sliver and back, which is exactly how a spinning prop reads head-on.
+ */
+.drone-prop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: drone-prop-spin 420ms linear infinite;
+}
+
+.drone-cursor.is-flying .drone-prop {
+  animation-duration: 180ms;
+}
+
+@keyframes drone-prop-spin {
+  from {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(360deg);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

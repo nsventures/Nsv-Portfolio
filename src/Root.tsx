@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import { AdminProductionGate } from './admin/components/AdminProductionGate'
+import { beginPasswordRecovery, isPasswordRecovery } from './lib/authRecovery'
 import { getSupabase, isSupabaseConfigured } from './lib/supabase'
 import PublicApp from './PublicApp'
 
@@ -22,12 +23,18 @@ function AuthRecoveryRedirect() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    // The link may have been read at startup, before any listener existed.
+    if (isPasswordRecovery() && !window.location.pathname.startsWith('/admin/login')) {
+      navigate('/admin/login', { replace: true })
+    }
+
     if (!isSupabaseConfigured()) return
     const supabase = getSupabase()
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
+        beginPasswordRecovery()
         navigate('/admin/login', { replace: true })
       }
     })

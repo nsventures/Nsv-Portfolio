@@ -19,6 +19,7 @@ const navItems = [
   { to: '/admin/tours/new', label: 'Add tour/video', end: true },
   { to: '/admin/cities', label: 'Cities', end: true },
   { to: '/admin/bulk-upload', label: 'Bulk upload', end: true },
+  { to: '/admin/settings', label: 'Settings', end: true },
 ] as const
 
 export function AdminLayout() {
