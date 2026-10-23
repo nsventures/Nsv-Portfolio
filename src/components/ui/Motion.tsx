@@ -1,6 +1,7 @@
 import { motion, type HTMLMotionProps } from 'framer-motion'
 import { useRef, type ReactNode } from 'react'
 import { cn } from '../../lib/utils'
+import { useTiltGlow } from '../../hooks/useTiltGlow'
 
 interface MagneticButtonProps extends HTMLMotionProps<'button'> {
   children: ReactNode
@@ -10,6 +11,8 @@ interface MagneticButtonProps extends HTMLMotionProps<'button'> {
   wave?: boolean
   /** Pull the button toward the pointer. Off by default when `wave` is set. */
   magnetic?: boolean
+  /** Gradient border that lights up and tilts toward the pointer. */
+  glow?: boolean
 }
 
 const variants = {
@@ -36,10 +39,13 @@ export function MagneticButton({
   size = 'md',
   wave = false,
   magnetic = !wave,
+  glow = wave,
   className,
   ...props
 }: MagneticButtonProps) {
   const ref = useRef<HTMLButtonElement>(null)
+  const { ref: tiltRef, onPointerMove: onTiltMove, onPointerLeave: onTiltLeave } =
+    useTiltGlow<HTMLButtonElement>()
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     const btn = ref.current
@@ -56,18 +62,28 @@ export function MagneticButton({
     btn.style.transform = 'translate(0, 0)'
   }
 
+  const setRefs = (node: HTMLButtonElement | null) => {
+    ref.current = node
+    tiltRef.current = node
+  }
+
   return (
     <motion.button
-      ref={ref}
+      ref={setRefs}
       className={cn(
         'relative inline-flex items-center justify-center transition-colors duration-400',
         variants[variant],
         sizes[size],
         wave && 'btn-wave',
+        glow && 'btn-3d',
         className,
       )}
       onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={() => {
+        handleMouseLeave()
+        if (glow) onTiltLeave()
+      }}
+      onPointerMove={glow ? onTiltMove : undefined}
       whileTap={{ scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       {...props}

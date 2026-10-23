@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useScrollPosition } from '../../hooks/useMotion'
+import { useTiltGlow } from '../../hooks/useTiltGlow'
 import { cn } from '../../lib/utils'
 import { contact } from '../../data/contact'
 import { Logo } from '../ui/Logo'
@@ -9,9 +10,10 @@ interface NavbarProps {
   onCallbackClick?: () => void
 }
 
-const blueBtnClass = cn(
-  'inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-cyan font-bold text-white',
-  'shadow-lg shadow-cyan/25 transition-colors hover:bg-cyan-bright',
+// Matches the hero CTAs: white pill, wave fill, interactive gradient border.
+const contactBtnClass = cn(
+  'btn-wave btn-3d relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full',
+  'border border-navy/15 bg-white font-semibold text-navy shadow-sm shadow-navy/5',
   'min-h-11 min-w-11 px-3 py-2 text-xs leading-none',
   'min-[400px]:min-w-0 min-[400px]:px-3.5',
   'sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm',
@@ -132,6 +134,16 @@ function SocialIconRow({
 export function Navbar({ onCallbackClick }: NavbarProps) {
   const scrolled = useScrollPosition()
   const headerRef = useRef<HTMLElement>(null)
+  const {
+    ref: phoneRef,
+    onPointerMove: onPhoneMove,
+    onPointerLeave: onPhoneLeave,
+  } = useTiltGlow<HTMLAnchorElement>()
+  const {
+    ref: callbackRef,
+    onPointerMove: onCallbackMove,
+    onPointerLeave: onCallbackLeave,
+  } = useTiltGlow<HTMLButtonElement>()
   // The portfolio section sits behind a darker bar — the white wordmark reads there.
   const [overPortfolio, setOverPortfolio] = useState(false)
 
@@ -213,29 +225,37 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
               />
             </div>
             <motion.a
+              ref={phoneRef}
               href={contact.phoneTel}
-              className={blueBtnClass}
+              className={contactBtnClass}
               aria-label={`Call ${contact.phoneDisplay}`}
-              whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
+              onPointerMove={onPhoneMove}
+              onPointerLeave={onPhoneLeave}
               data-cursor="pointer"
             >
-              <PhoneIcon className="h-4 w-4 min-[400px]:hidden" />
-              <span className="hidden min-[400px]:inline  sm:hidden">{contact.phoneDisplayCompact}</span>
-              <span className="hidden sm:inline">{contact.phoneDisplay}</span>
+              <span className="btn-wave-fill" aria-hidden />
+              <PhoneIcon className="relative z-10 h-4 w-4 min-[400px]:hidden" />
+              <span className="relative z-10 hidden min-[400px]:inline sm:hidden">
+                {contact.phoneDisplayCompact}
+              </span>
+              <span className="relative z-10 hidden sm:inline">{contact.phoneDisplay}</span>
             </motion.a>
             <motion.button
               type="button"
+              ref={callbackRef}
               onClick={onCallbackClick}
-              className={blueBtnClass}
+              className={contactBtnClass}
               aria-label="Get Callback"
-              whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
+              onPointerMove={onCallbackMove}
+              onPointerLeave={onCallbackLeave}
               data-cursor="pointer"
             >
-              <CallbackIcon className="h-4 w-4 min-[400px]:hidden" />
-              <span className="hidden min-[400px]:inline sm:hidden">Callback</span>
-              <span className="hidden sm:inline">Get Callback</span>
+              <span className="btn-wave-fill" aria-hidden />
+              <CallbackIcon className="relative z-10 h-4 w-4 min-[400px]:hidden" />
+              <span className="relative z-10 hidden min-[400px]:inline sm:hidden">Callback</span>
+              <span className="relative z-10 hidden sm:inline">Get Callback</span>
             </motion.button>
           </div>
         </div>

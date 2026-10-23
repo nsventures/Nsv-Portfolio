@@ -51,6 +51,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "pdfjs-dist": "^6.4.299",
     "playwright": "^1.52.0",
     "sharp": "^0.35.3",
     "typescript": "~6.0.2",

@@ -456,12 +456,12 @@
   color: var(--color-navy);
   display: block;
   line-height: 1 !important;
-  font-size: clamp(1.75rem, 4vw, 3rem) !important;
+  font-size: clamp(1.55rem, 3.6vw, 2.65rem) !important;
   text-align: center;
 }
 
 .hero-stats-label {
-  color: var(--color-slate);
+  color: var(--color-cyan);
 }
 
 /* Mobile: the stats read as one bordered card with hairline dividers. */
@@ -550,7 +550,7 @@
 }
 
 .logo-marquee-track + .logo-marquee-track {
-  margin-top: clamp(1rem, 3.2vh, 2.75rem);
+  margin-top: clamp(0.875rem, 2.7vh, 2.5rem);
 }
 
 /* Second row drifts the other way. */
@@ -559,6 +559,11 @@
 }
 
 .logo-marquee:hover .logo-marquee-track {
+  animation-play-state: paused;
+}
+
+/* Nothing behind a modal needs to keep compositing. */
+body.portfolio-modal-open .logo-marquee-track {
   animation-play-state: paused;
 }
 
@@ -599,6 +604,77 @@
 
   .logo-marquee {
     overflow-x: auto;
+  }
+}
+
+/* Interactive 3D gradient border ------------------------------------------ */
+
+/*
+ * The ring is a pseudo-element masked to the border only, carrying a conic
+ * gradient so colour runs the whole way round rather than pooling on one
+ * edge. The pointer swings that sweep (--angle), tilts the button
+ * (--rx/--ry) and throws the shadow the other way (--sx/--sy).
+ */
+.btn-3d {
+  --rx: 0deg;
+  --ry: 0deg;
+  --sx: 0;
+  --sy: 0;
+  --angle: 135deg;
+  --glow: 0;
+
+  transform: perspective(640px) rotateX(var(--rx)) rotateY(var(--ry))
+    translateZ(calc(var(--glow) * 6px));
+  transform-style: preserve-3d;
+  transition:
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 240ms ease;
+  will-change: transform;
+
+  /* Face shading: lit top edge, shaded base — the button has thickness. */
+  background-image: linear-gradient(180deg, #ffffff 0%, #f2f8fc 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -2px 3px rgba(0, 45, 84, 0.07),
+    calc(var(--sx) * 1px) calc(var(--sy) * 1px + 7px) 20px
+      rgba(0, 45, 84, calc(0.1 + 0.12 * var(--glow))),
+    0 1px 2px rgba(0, 45, 84, 0.12);
+}
+
+.btn-3d::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--angle),
+    var(--color-cyan-bright) 0deg,
+    #cfeafa 72deg,
+    var(--color-cyan) 144deg,
+    #8fd4f0 216deg,
+    var(--color-cyan-dim) 288deg,
+    var(--color-cyan-bright) 360deg
+  );
+  /* Keep only the ring: fill minus content box. */
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: calc(0.5 + 0.5 * var(--glow));
+  transition: opacity 260ms ease;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-3d {
+    transform: none;
+    transition: opacity 200ms ease;
   }
 }
 

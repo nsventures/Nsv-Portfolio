@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { animate, motion, useInView, useMotionValue, useTransform } from 'framer-motion'
 import { MagneticButton } from '../ui/Motion'
 import { ClientLogoMarquee } from '../ui/ClientLogoMarquee'
+import { CommercialFlipbook } from '../ui/CommercialFlipbook'
 import { scrollToPortfolioFilter, parseMediaFilter } from '../../lib/portfolioNav'
 import type { PortfolioMediaType } from '../../types/portfolio'
 
@@ -27,20 +28,12 @@ const HERO_STATS: HeroStat[] = [
 ]
 
 const HERO_BUTTON_BASE =
-  'hero-cta whitespace-nowrap px-3 py-3 text-[0.85rem] sm:px-10 sm:py-6 sm:text-lg xl:px-12 xl:text-xl'
-
-/** Served from /public — the space-laden name needs encoding in the URL. */
-const COMMERCIAL_PDF = {
-  url: encodeURI(
-    `${import.meta.env.BASE_URL}NS Ventures Proposal 7506203777 www.nsventures.in.pdf`,
-  ),
-  filename: 'NS Ventures Proposal.pdf',
-}
+  'hero-cta whitespace-nowrap px-3 py-2.5 text-[0.8rem] sm:px-9 sm:py-5 sm:text-base xl:px-11 xl:text-lg'
 
 const HERO_BUTTON = `${HERO_BUTTON_BASE} w-full sm:w-auto`
 
 // Third pill: centred under the pair, matching one column's width exactly.
-const HERO_BUTTON_WIDE = `${HERO_BUTTON_BASE} col-span-2 mx-auto w-[calc(50%-0.3125rem)] sm:col-auto sm:mx-0 sm:w-auto`
+const HERO_BUTTON_WIDE = `${HERO_BUTTON_BASE} col-span-2 mx-auto w-[calc(50%-0.4375rem)] sm:col-auto sm:mx-0 sm:w-auto`
 
 const statsContainer = {
   hidden: {},
@@ -115,7 +108,7 @@ function HeroStats({ className = '' }: { className?: string }) {
               <HeroStatValue stat={stat} active={inView} />
             </div>
             <span
-              className="hero-stats-label mt-2 block max-w-[7rem] text-[0.62rem] font-semibold uppercase leading-[1.3] tracking-[0.1em] text-slate sm:max-w-[13rem] sm:text-[0.8rem] sm:tracking-[0.14em] md:max-w-none md:whitespace-nowrap md:text-sm"
+              className="hero-stats-label mt-2 block max-w-[7rem] text-[0.62rem] font-extrabold uppercase leading-[1.3] tracking-[0.1em] text-slate sm:max-w-[13rem] sm:text-[0.8rem] sm:tracking-[0.14em] md:max-w-none md:whitespace-nowrap md:text-sm"
             >
               {stat.label}
             </span>
@@ -153,15 +146,7 @@ export function Hero() {
     setActiveTab('virtual-tour')
     scrollToPortfolioFilter('virtual-tour')
   }
-  const downloadCommercial = () => {
-    const link = document.createElement('a')
-    link.href = COMMERCIAL_PDF.url
-    link.download = COMMERCIAL_PDF.filename
-    // Served from /public — same origin, so `download` is honoured.
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-  }
+  const [commercialOpen, setCommercialOpen] = useState(false)
 
   return (
     <section
@@ -181,24 +166,26 @@ export function Hero() {
         className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-40% via-white/80 via-58% to-white to-68%"
       />
 
-      <div className="relative z-10 flex w-full min-w-0 flex-col justify-center max-w-[1700px] mx-auto px-5 sm:px-6 lg:px-10 pt-36 pb-6 sm:pt-[clamp(5rem,10vh,7.5rem)] sm:pb-[clamp(1.25rem,3vh,2.75rem)]">
+      <div className="relative z-10 flex w-full min-w-0 flex-col justify-center max-w-[1700px] mx-auto px-5 sm:px-6 lg:px-10 pt-48 pb-6 sm:pt-[clamp(5rem,17vh,13rem)] sm:pb-[clamp(1.25rem,3vh,2.75rem)]">
         <motion.h1
           custom={1}
           initial="hidden"
           animate="visible"
           variants={fadeUp}
-          className="font-display w-full min-w-0 text-balance text-center text-[clamp(2.9rem,11.5vw,5.5rem)] font-bold text-navy leading-[1.1] sm:text-[clamp(2.25rem,7vw,5.5rem)] lg:text-[clamp(2.5rem,6.5vw,5rem)]"
+          className="font-display w-full min-w-0 text-balance text-center text-[clamp(2.5rem,10vw,4.75rem)] font-bold text-navy leading-[1.1] sm:text-[clamp(2rem,6.3vw,4.75rem)] lg:text-[clamp(2.25rem,5.8vw,4.5rem)]"
         >
           <span className="block sm:whitespace-nowrap">India&apos;s Largest Real Estate</span>
           <span className="block text-cyan">Content Portfolio</span>
         </motion.h1>
+
+        <HeroStats className="mt-7 sm:mt-[clamp(1.5rem,4vh,2.5rem)]" />
 
         <motion.div
           custom={2}
           initial="hidden"
           animate="visible"
           variants={fadeUp}
-          className="mx-auto mt-7 grid w-full min-w-0 max-w-[22rem] grid-cols-2 gap-2.5 sm:mt-[clamp(1.5rem,4vh,2.5rem)] sm:flex sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4"
+          className="mx-auto mt-8 grid w-full min-w-0 max-w-[22rem] grid-cols-2 gap-3.5 sm:mt-[clamp(1.25rem,3.4vh,2.75rem)] sm:flex sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6 lg:gap-8"
         >
           <MagneticButton
             size="xl"
@@ -225,18 +212,18 @@ export function Hero() {
             wave
             className={HERO_BUTTON_WIDE}
             variant="outline"
-            onClick={downloadCommercial}
+            onClick={() => setCommercialOpen(true)}
             data-cursor="pointer"
           >
-            Our Proposal
+            Our Commercial
           </MagneticButton>
         </motion.div>
-        <HeroStats className="mt-8 sm:mt-[clamp(1.25rem,3.4vh,2.75rem)]" />
-
-        <div className="mt-14 sm:mt-[clamp(4rem,9.5vh,6.75rem)]">
+        
+        <div className="mt-12 sm:mt-[clamp(1.75rem,4vh,5rem)]">
           <ClientLogoMarquee className="logo-marquee--bleed" />
         </div>
       </div>
+      {commercialOpen && <CommercialFlipbook onClose={() => setCommercialOpen(false)} />}
     </section>
   )
 }
