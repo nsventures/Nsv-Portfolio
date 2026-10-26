@@ -17,7 +17,7 @@ const contactBtnClass = cn(
   'min-h-11 min-w-11 px-3 py-2 text-xs leading-none',
   'min-[400px]:min-w-0 min-[400px]:px-3.5',
   'sm:min-h-12 sm:px-5 sm:py-2.5 sm:text-sm',
-  'md:px-6 md:py-3 md:text-base',
+  'lg:px-6 lg:py-3 lg:text-base',
 )
 
 function CallbackIcon({ className }: { className?: string }) {
@@ -189,7 +189,7 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
       transition={{ duration: 0.9, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
     >
       <nav
-        className="mx-auto flex w-full max-w-[100vw] flex-col gap-2 px-3 min-[400px]:gap-2.5 min-[400px]:px-4 sm:gap-0 sm:px-6 lg:px-10 xl:px-14"
+        className="mx-auto flex w-full max-w-[100vw] flex-col gap-2 px-3 min-[400px]:gap-2.5 min-[400px]:px-4 sm:px-6 md:gap-0 lg:px-10 xl:px-14"
         aria-label="Main navigation"
       >
         <div className="flex w-full items-center justify-between gap-2">
@@ -208,7 +208,7 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
               tone={overPortfolio ? 'light' : 'dark'}
               className={cn(
                 'h-9 w-auto max-w-[min(42vw,9.5rem)] transition-[height,max-width] duration-300',
-                'min-[400px]:max-w-none min-[400px]:h-10',
+                'min-[400px]:h-10 min-[400px]:max-w-[min(40vw,11rem)] md:max-w-[13rem] lg:max-w-[16rem]',
                 scrolled ? 'sm:h-11 md:h-12' : 'sm:h-12 md:h-14 lg:h-16',
               )}
             />
@@ -216,12 +216,12 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
 
           <div className="flex shrink-0 items-center gap-1.5 min-[400px]:gap-2 sm:gap-3">
             <div
-              className="hidden items-center gap-1.5 sm:flex sm:gap-2"
+              className="hidden items-center gap-1.5 md:flex md:gap-2"
               aria-label="Social media links"
             >
               <SocialIconRow
-                sizeClassName="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11"
-                iconClassName="h-[18px] w-[18px] sm:h-5 sm:w-5 md:h-[22px] md:w-[22px]"
+                sizeClassName="h-9 w-9 lg:h-11 lg:w-11"
+                iconClassName="h-[18px] w-[18px] lg:h-[22px] lg:w-[22px]"
               />
             </div>
             <motion.a
@@ -261,7 +261,7 @@ export function Navbar({ onCallbackClick }: NavbarProps) {
         </div>
 
         <div
-          className="flex w-full items-center justify-center gap-3 sm:hidden"
+          className="flex w-full items-center justify-center gap-3 md:hidden"
           aria-label="Social media links"
         >
           <SocialIconRow sizeClassName="h-8 w-8" iconClassName="h-4 w-4" />

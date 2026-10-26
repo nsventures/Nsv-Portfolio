@@ -27,8 +27,12 @@ const HERO_STATS: HeroStat[] = [
   { target: 3000, suffix: '+', label: 'Projects Delivered' },
 ]
 
+// Arbitrary values on purpose: `cn` is plain clsx, so the static padding
+// and text classes from MagneticButton's `xl` size would otherwise win on
+// stylesheet order and these would never apply.
 const HERO_BUTTON_BASE =
-  'hero-cta whitespace-nowrap px-3 py-2.5 text-[0.8rem] sm:px-9 sm:py-5 sm:text-base xl:px-11 xl:text-lg'
+  'hero-cta whitespace-nowrap px-[0.75rem] py-[0.625rem] text-[0.8rem] ' +
+  'sm:px-[1.5rem] sm:py-[1.25rem] sm:text-[1rem] lg:px-[2.25rem] xl:px-[2.75rem] xl:text-[1.125rem]'
 
 const HERO_BUTTON = `${HERO_BUTTON_BASE} w-full sm:w-auto`
 
@@ -152,7 +156,7 @@ export function Hero() {
     <section
       id="home"
       ref={sectionRef}
-      className="relative flex min-h-0 overflow-hidden bg-white sm:min-h-screen"
+      className="relative flex min-h-0 overflow-hidden bg-white sm:min-h-[min(100svh,58rem)]"
       aria-label="Hero"
     >
       {/* Brand wash: blue from the left edge, carrying past the centre before it clears. */}
@@ -166,7 +170,7 @@ export function Hero() {
         className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent from-40% via-white/80 via-58% to-white to-68%"
       />
 
-      <div className="relative z-10 flex w-full min-w-0 flex-col justify-center max-w-[1700px] mx-auto px-5 sm:px-6 lg:px-10 pt-48 pb-6 sm:pt-[clamp(5rem,17vh,13rem)] sm:pb-[clamp(1.25rem,3vh,2.75rem)]">
+      <div className="relative z-10 flex w-full min-w-0 flex-col justify-center max-w-[1700px] mx-auto px-5 sm:px-6 lg:px-10 pt-48 pb-6 sm:pt-[clamp(4.5rem,11vh,9rem)] sm:pb-[clamp(1.25rem,3vh,2.75rem)]">
         <motion.h1
           custom={1}
           initial="hidden"
@@ -185,7 +189,7 @@ export function Hero() {
           initial="hidden"
           animate="visible"
           variants={fadeUp}
-          className="mx-auto mt-8 grid w-full min-w-0 max-w-[22rem] grid-cols-2 gap-3.5 sm:mt-[clamp(1.25rem,3.4vh,2.75rem)] sm:flex sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center sm:gap-6 lg:gap-8"
+          className="mx-auto mt-8 grid w-full min-w-0 max-w-[22rem] grid-cols-2 gap-3.5 sm:mt-[clamp(1.25rem,3.4vh,2.75rem)] sm:flex sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4 lg:gap-6 xl:gap-8"
         >
           <MagneticButton
             size="xl"

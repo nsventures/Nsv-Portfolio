@@ -9,7 +9,7 @@ import { PortfolioCard } from '../ui/PortfolioCard'
 import { SearchableFilterDropdown } from '../ui/SearchableFilterDropdown'
 
 const CARD_GRID =
-  'grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-3.5 lg:gap-5'
+  'grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-3.5 lg:gap-5'
 
 export function Portfolio() {
   const [mediaFilter, setMediaFilter] = useState<PortfolioMediaType>(() =>
