@@ -41,6 +41,27 @@ export function optimizeThumbnailUrl(url: string): string {
   return url
 }
 
+/**
+ * Supabase serves resized copies from /render/image. Stored thumbs are 1120px
+ * wide but the cards show them ~315px, so asking for a smaller render cuts
+ * each one from ~92 KB to ~25 KB.
+ */
+export function supabaseThumbVariant(url: string, width: number, quality: number): string {
+  if (!url.includes('/storage/v1/object/public/')) return url
+  const rendered = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
+  const sep = rendered.includes('?') ? '&' : '?'
+  return `${rendered}${sep}width=${width}&quality=${quality}&resize=contain`
+}
+
+/** `srcset` so 1x screens download a third of what retina needs. */
+export function portfolioThumbSrcSet(url: string): string | undefined {
+  if (!url.includes('/storage/v1/object/public/')) return undefined
+  return [
+    `${supabaseThumbVariant(url, 400, 70)} 400w`,
+    `${supabaseThumbVariant(url, 640, 60)} 640w`,
+  ].join(', ')
+}
+
 export function getPortfolioThumbnail(thumbnail?: string | null, cacheBust?: string | number): string {
   const value = thumbnail?.trim()
   if (!value) return GENERIC_PORTFOLIO_THUMBNAIL

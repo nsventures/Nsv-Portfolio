@@ -163,6 +163,14 @@ export function CommercialFlipbook({ onClose }: { onClose: () => void }) {
   const hasRight = Boolean(pageAt(leaf, 1))
   const bookShift = !isSpread || (hasLeft && hasRight) ? '0%' : hasRight ? '-25%' : '25%'
 
+  /*
+   * When a cover is showing, the book *box* is still a full spread wide but
+   * only its middle half is painted, so arrows pinned to the box edges sit a
+   * quarter-spread away from the artwork. Pull them in by that quarter.
+   */
+  const coverOnly = isSpread && !(hasLeft && hasRight)
+  const arrowInset = coverOnly ? 'calc(25% - 3.25rem)' : '-3.25rem'
+
   // While a sheet is turning, the pages underneath must already be the new leaf
   // on the side being revealed, and the old one on the side being covered.
   const base = turning
@@ -197,12 +205,14 @@ export function CommercialFlipbook({ onClose }: { onClose: () => void }) {
         <CloseIcon className="h-5 w-5" />
       </button>
 
+      <div className="relative z-[1]">
       <div
-        className="relative z-[1] flex items-center justify-center [perspective:1700px] [perspective-origin:50%_45%]"
+        className="relative flex items-center justify-center [perspective:1700px] [perspective-origin:50%_45%] [--fb-gutter:2rem] sm:[--fb-gutter:11rem]"
         style={{
           // Bounded by height *and* width, so the book never runs off a phone.
+          // The gutter also leaves room for the arrows once they flank it.
           aspectRatio: String(RATIO),
-          height: `min(78vh, calc((100vw - 2rem) / ${RATIO}))`,
+          height: `min(78vh, calc((100vw - var(--fb-gutter)) / ${RATIO}))`,
         }}
         onContextMenu={(e) => e.preventDefault()}
       >
@@ -302,8 +312,44 @@ export function CommercialFlipbook({ onClose }: { onClose: () => void }) {
         </motion.div>
       </div>
 
+      {/*
+        From sm up the arrows flank the book itself, just outside its edges. On
+        phones the book fills the width, so they sit under it with the counter.
+      */}
+      <button
+        type="button"
+        onClick={() => go(-1)}
+        disabled={atStart}
+        aria-label="Previous page"
+        className={`${navClass} absolute top-1/2 z-[2] hidden -translate-y-1/2 sm:grid`}
+        style={{ left: arrowInset }}
+        data-cursor="pointer"
+      >
+        <ChevronIcon className="h-5 w-5" />
+      </button>
+
+      <button
+        type="button"
+        onClick={() => go(1)}
+        disabled={atEnd}
+        aria-label="Next page"
+        className={`${navClass} absolute top-1/2 z-[2] hidden -translate-y-1/2 sm:grid`}
+        style={{ right: arrowInset }}
+        data-cursor="pointer"
+      >
+        <ChevronIcon className="h-5 w-5 rotate-180" />
+      </button>
+      </div>
+
       <div className="pointer-events-none relative z-[1] mt-5 flex items-center gap-5">
-        <button type="button" onClick={() => go(-1)} disabled={atStart} aria-label="Previous page" className={navClass} data-cursor="pointer">
+        <button
+          type="button"
+          onClick={() => go(-1)}
+          disabled={atStart}
+          aria-label="Previous page"
+          className={`${navClass} sm:hidden`}
+          data-cursor="pointer"
+        >
           <ChevronIcon className="h-5 w-5" />
         </button>
 
@@ -317,7 +363,14 @@ export function CommercialFlipbook({ onClose }: { onClose: () => void }) {
           })()}
         </p>
 
-        <button type="button" onClick={() => go(1)} disabled={atEnd} aria-label="Next page" className={navClass} data-cursor="pointer">
+        <button
+          type="button"
+          onClick={() => go(1)}
+          disabled={atEnd}
+          aria-label="Next page"
+          className={`${navClass} sm:hidden`}
+          data-cursor="pointer"
+        >
           <ChevronIcon className="h-5 w-5 rotate-180" />
         </button>
       </div>

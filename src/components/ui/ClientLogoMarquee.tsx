@@ -41,13 +41,10 @@ function useMarqueeSpeed<T extends HTMLElement>() {
 function MarqueeRow({
   logos,
   reverse,
-  featured,
   onMissing,
 }: {
   logos: ClientLogo[]
   reverse?: boolean
-  /** Top row: the major builders, shown noticeably larger. */
-  featured?: boolean
   onMissing: (file: string) => void
 }) {
   const trackRef = useMarqueeSpeed<HTMLDivElement>()
@@ -69,12 +66,8 @@ function MarqueeRow({
                 loading="lazy"
                 decoding="async"
                 onError={() => onMissing(logo.file)}
-                className={`w-auto object-contain mix-blend-multiply transition-transform duration-300 ease-out hover:scale-125 ${
-                  // Source files are 368x160, so these stay well within native.
-                  featured
-                    ? 'h-[5.5rem] sm:h-[clamp(5rem,12.2vh,7.75rem)]'
-                    : 'h-[5rem] sm:h-[clamp(4.5rem,10.9vh,7rem)]'
-                }`}
+                // Both rows at one size; sources are 368x160 so this stays native.
+                className="h-[5.25rem] w-auto object-contain mix-blend-multiply transition-transform duration-300 ease-out hover:scale-125 sm:h-[clamp(4.75rem,11.5vh,7.5rem)]"
               />
             </li>
           ))}
@@ -116,7 +109,7 @@ export function ClientLogoMarquee({ className = '' }: { className?: string }) {
       aria-label="Clients we work with"
       data-no-drone-cursor
     >
-      {topRow.length > 0 && <MarqueeRow logos={topRow} featured onMissing={onMissing} />}
+      {topRow.length > 0 && <MarqueeRow logos={topRow} onMissing={onMissing} />}
       {bottomRow.length > 0 && <MarqueeRow logos={bottomRow} reverse onMissing={onMissing} />}
     </div>
   )

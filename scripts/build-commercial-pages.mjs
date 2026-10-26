@@ -44,7 +44,9 @@ if (!existsSync(SOURCE)) {
  *      individually instead of collapsing into one wide box).
  */
 const LINK_PATTERN =
-  /(https?:\/\/\S+|www\.[\w.-]+\.[a-z]{2,}|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\+?\d[\d\s-]{8,}\d)/i
+  // Joined lines run URLs together ("...@NSVentureshttps://..."), so each
+  // match has to stop as soon as the next scheme begins.
+  /(https?:\/\/(?:(?!https?:\/\/)\S)+|www\.(?:(?!https?:\/\/)[^\s/])+\.[a-z]{2,}(?:\/(?:(?!https?:\/\/)\S)*)?|[\w.+-]+@[\w.-]+\.[a-z]{2,}|\+?\d[\d\s-]{8,}\d)/i
 
 function toHref(raw) {
   const text = raw.trim().replace(/[.,)]+$/, '')
@@ -107,21 +109,47 @@ async function extractLinks() {
 
     if (links.length === 0) {
       const { items } = await page.getTextContent()
-      const candidates = []
 
+      /*
+       * pdf.js splits runs wherever the PDF does — one link arrived as
+       * "https:/" + "/youtu.be/...", so matching item by item missed it.
+       * Rebuild each line, match against that, then map the match back to the
+       * items it spans and union their boxes.
+       */
+      const lines = new Map()
       for (const item of items) {
-        const text = item.str?.trim()
+        const text = item.str ?? ''
         if (!text || !item.transform) continue
-        const match = text.match(LINK_PATTERN)
-        if (!match) continue
-        candidates.push({
-          href: toHref(match[1]),
-          left: item.transform[4],
-          // PDF origin is bottom-left; page images are top-left.
-          top: vh - item.transform[5] - (item.height ?? 0),
-          w: item.width ?? 0,
-          h: item.height ?? 0,
-        })
+        const baseline = Math.round(item.transform[5])
+        const key = [...lines.keys()].find((k) => Math.abs(k - baseline) <= 3) ?? baseline
+        if (!lines.has(key)) lines.set(key, [])
+        lines.get(key).push(item)
+      }
+
+      const candidates = []
+      for (const [, lineItems] of lines) {
+        lineItems.sort((a, b) => a.transform[4] - b.transform[4])
+
+        let text = ''
+        const spans = []
+        for (const item of lineItems) {
+          spans.push({ from: text.length, to: text.length + item.str.length, item })
+          text += item.str
+        }
+
+        for (const match of text.matchAll(new RegExp(LINK_PATTERN, 'gi'))) {
+          const from = match.index
+          const to = from + match[0].length
+          const hit = spans.filter((s) => s.from < to && s.to > from).map((s) => s.item)
+          if (!hit.length) continue
+
+          const left = Math.min(...hit.map((it) => it.transform[4]))
+          const right = Math.max(...hit.map((it) => it.transform[4] + (it.width ?? 0)))
+          const h = Math.max(...hit.map((it) => it.height ?? 0))
+          const topEdge = Math.min(...hit.map((it) => vh - it.transform[5] - (it.height ?? 0)))
+
+          candidates.push({ href: toHref(match[0]), left, top: topEdge, w: right - left, h })
+        }
       }
 
       /*
@@ -135,8 +163,10 @@ async function extractLinks() {
         candidates.some((c) => c.href.startsWith('tel:'))
 
       for (const c of candidates) {
-        const isFooterIcon = !c.href.startsWith('tel:') && !c.href.includes('nsventures.in/')
-          && /youtube|linkedin|instagram|facebook|pinterest/i.test(c.href)
+        const isFooterIcon =
+          !c.href.startsWith('tel:') &&
+          !c.href.includes('nsventures.in/') &&
+          /youtube\.com|linkedin|instagram|facebook|pinterest/i.test(c.href)
         if (isFooterIcon && !hasFooter) continue
         push(c.href, c.left, c.top, c.w, c.h)
       }

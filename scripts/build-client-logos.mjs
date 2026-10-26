@@ -52,6 +52,7 @@ const FEATURED = [
   'Unity Group',
   'Sunteck',
   'Shriram Properties',
+  'ANAROCK',
 ]
 
 const key = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '')
@@ -59,17 +60,33 @@ const key = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, '')
 /** Collapses "Brand", "BRAND" and "Brand-3" onto one key. */
 const brandKey = (name) => key(name.replace(/[-\s]*\d+$/, ''))
 
+/** WebP first: a .webp next to a .png is the optimised copy of it. */
+const rank = (f) => (/\.webp$/i.test(f) ? 0 : 1)
+
 const all = readdirSync(DIR)
   .filter((f) => /\.(webp|png|jpe?g|svg)$/i.test(f))
-  .sort((a, b) => a.length - b.length || a.localeCompare(b))
+  .sort(
+    (a, b) =>
+      rank(a) - rank(b) ||
+      a.length - b.length ||
+      a.localeCompare(b),
+  )
 
 // One entry per brand — the shortest name wins, so "Brand" beats "Brand-3".
 const seen = new Map()
 const dropped = []
+const superseded = []
 for (const f of all) {
   const k = brandKey(f.replace(/\.[^.]+$/, ''))
-  if (seen.has(k)) dropped.push(f)
-  else seen.set(k, f)
+  if (!seen.has(k)) {
+    seen.set(k, f)
+    continue
+  }
+  // A .png whose .webp we already took is just the unoptimised original.
+  const kept = seen.get(k)
+  const sameName = kept.replace(/\.[^.]+$/, '') === f.replace(/\.[^.]+$/, '')
+  if (sameName && /\.png$/i.test(f)) superseded.push(f)
+  else dropped.push(f)
 }
 
 const files = [...seen.values()].sort()
@@ -85,7 +102,45 @@ for (const name of FEATURED) {
 }
 
 const featuredSet = new Set(featuredFiles)
-const rest = files.filter((f) => !featuredSet.has(f))
+
+/**
+ * Alphabetical order parks same-brand logos next to each other — the three
+ * Suraksha projects, four Homelands and so on all scrolled past as a clump.
+ * Deal one from each brand in rotation so they end up spread across the row.
+ */
+function spreadByBrand(list) {
+  const groups = new Map()
+  for (const file of list) {
+    const first = file.replace(/\.[^.]+$/, '').split(/[\s–-]+/)[0].toLowerCase()
+    if (!groups.has(first)) groups.set(first, [])
+    groups.get(first).push(file)
+  }
+
+  // Biggest families first, so their members get the widest spacing.
+  const queues = [...groups.values()].sort((a, b) => b.length - a.length)
+  const out = []
+  let moved = true
+  while (moved) {
+    moved = false
+    for (const q of queues) {
+      const next = q.shift()
+      if (next) {
+        out.push(next)
+        moved = true
+      }
+    }
+  }
+  // The row is rendered twice to loop, so its last and first logos sit side by
+  // side at the seam. Rotate until those two come from different brands.
+  const brandOf = (f) => f.replace(/\.[^.]+$/, '').split(/[\s–-]+/)[0].toLowerCase()
+  for (let i = 0; i < out.length && brandOf(out[0]) === brandOf(out[out.length - 1]); i++) {
+    out.push(out.shift())
+  }
+
+  return out
+}
+
+const rest = spreadByBrand(files.filter((f) => !featuredSet.has(f)))
 
 const row = (file) => {
   const name = file.replace(/\.[^.]+$/, '')
@@ -125,6 +180,9 @@ export function clientLogoSrc(file: string): string {
 )
 
 console.log(`featured: ${featuredFiles.length} · other: ${rest.length} · total: ${files.length}`)
+if (superseded.length) {
+  console.log(`${superseded.length} PNG original(s) superseded by their WebP copy`)
+}
 if (dropped.length) {
   console.log(`skipped ${dropped.length} duplicate${dropped.length === 1 ? '' : 's'}: ${dropped.join(', ')}`)
 }
