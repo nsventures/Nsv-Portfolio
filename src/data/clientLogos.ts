@@ -178,7 +178,6 @@ export const OTHER_CLIENT_LOGOS: ClientLogo[] = [
   { name: "SB – Stay Blessed", file: "SB – Stay Blessed.webp" },
   { name: "SCG", file: "SCG.webp" },
   { name: "SGIT Sonipat Global Industrial Township", file: "SGIT Sonipat Global Industrial Township.webp" },
-  { name: "SGPH LLP", file: "SGPH LLP.webp" },
   { name: "Saatori", file: "Saatori.webp" },
   { name: "Sagar Sunrise", file: "Sagar Sunrise.webp" },
   { name: "Sandha Homes", file: "Sandha Homes.webp" },
