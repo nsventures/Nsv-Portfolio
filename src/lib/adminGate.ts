@@ -7,17 +7,6 @@ export function isAdminGateRequired(): boolean {
   return isSiteProtectionEnabled()
 }
 
-/**
- * Pre-migration fallback only. The real password lives hashed in Supabase and
- * is checked by `verify_admin_gate`; this is what the build used to compile
- * into the bundle, kept so an un-migrated deploy isn't locked out.
- */
-function getLegacyGatePassword(): string {
-  const fromEnv = import.meta.env.VITE_ADMIN_GATE_PASSWORD?.trim()
-  if (fromEnv) return fromEnv
-  return 'nsv@1234'
-}
-
 export function isAdminGateUnlocked(): boolean {
   if (!isAdminGateRequired()) return true
   try {
@@ -43,29 +32,41 @@ function isMissingFunction(error: { code?: string; message?: string }): boolean 
   )
 }
 
+/**
+ * Checked in the database and nowhere else.
+ *
+ * There is deliberately no client-side fallback. The gate used to compare
+ * against `VITE_ADMIN_GATE_PASSWORD`, defaulting to a literal in this file —
+ * but every VITE_ variable is compiled into the public bundle, so the gate
+ * password was readable by anyone who opened the JS. Only the bcrypt hash
+ * exists now, in a table with no select policy, compared by a security-definer
+ * function (migration 030).
+ *
+ * The cost of having no fallback is that a project without the migration can't
+ * be unlocked at all. That is the intended failure direction: locked out beats
+ * a published password.
+ */
 export async function unlockAdminGate(password: string): Promise<boolean> {
   if (!password) return false
 
-  if (isSupabaseConfigured()) {
-    try {
-      const { data, error } = await getSupabase().rpc('verify_admin_gate', {
-        p_password: password,
-      })
-      if (!error) {
-        if (data === true) {
-          markUnlocked()
-          return true
-        }
-        return false
-      }
-      if (!isMissingFunction(error)) throw new Error(error.message)
-      console.warn('[admin-gate] verify_admin_gate missing — run migration 030.')
-    } catch (err) {
-      console.warn('[admin-gate] falling back to the build-time password:', err)
-    }
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase is not configured, so the admin gate cannot be checked.')
   }
 
-  if (password !== getLegacyGatePassword()) return false
+  const { data, error } = await getSupabase().rpc('verify_admin_gate', {
+    p_password: password,
+  })
+
+  if (error) {
+    if (isMissingFunction(error)) {
+      throw new Error(
+        'Admin gate is not set up on this project. Run migration 030_admin_gate_password.sql.',
+      )
+    }
+    throw new Error(error.message)
+  }
+
+  if (data !== true) return false
   markUnlocked()
   return true
 }

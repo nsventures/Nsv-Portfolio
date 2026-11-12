@@ -32,6 +32,12 @@ const PortfolioVideoModal = lazy(() =>
 interface PortfolioAccessContextValue {
   isValidated: boolean
   openPortfolioItem: (entry: PortfolioEntry) => void
+  /**
+   * Gate anything that isn't a portfolio entry — the commercial deck, for
+   * one. Runs `onGranted` straight away when the visitor is already verified,
+   * otherwise holds it until they come back through the form.
+   */
+  requestAccess: (onGranted: () => void, label?: string) => void
 }
 
 const PortfolioAccessContext = createContext<PortfolioAccessContextValue | null>(null)
@@ -43,6 +49,10 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
   const [gateOpen, setGateOpen] = useState(false)
   const [pendingEntry, setPendingEntry] = useState<PortfolioEntry | null>(null)
   const [activeEntry, setActiveEntry] = useState<PortfolioEntry | null>(null)
+  // A ref, not state: this is a callback to fire once, and re-rendering the
+  // provider every time one is parked would remount the gate mid-flow.
+  const pendingActionRef = useRef<(() => void) | null>(null)
+  const [pendingLabel, setPendingLabel] = useState<string | null>(null)
   const timerStartedRef = useRef(false)
 
   useEffect(() => {
@@ -78,6 +88,19 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
     [isValidated],
   )
 
+  const requestAccess = useCallback(
+    (onGranted: () => void, label?: string) => {
+      if (!PORTFOLIO_ACCESS_VALIDATION_ENABLED || isValidated || hasPortfolioAccess()) {
+        onGranted()
+        return
+      }
+      pendingActionRef.current = onGranted
+      setPendingLabel(label ?? null)
+      setGateOpen(true)
+    },
+    [isValidated],
+  )
+
   const handleValidated = useCallback(() => {
     setIsValidated(true)
     setGateOpen(false)
@@ -85,6 +108,10 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
       setActiveEntry(pendingEntry)
       setPendingEntry(null)
     }
+    const pendingAction = pendingActionRef.current
+    pendingActionRef.current = null
+    setPendingLabel(null)
+    pendingAction?.()
   }, [pendingEntry])
 
   const handleSessionExpired = useCallback(() => {
@@ -100,10 +127,10 @@ export function PortfolioAccessProvider({ children }: { children: ReactNode }) {
 
   const pendingProjectName = pendingEntry
     ? (pendingEntry.projectName ?? pendingEntry.name).trim()
-    : null
+    : pendingLabel
 
   return (
-    <PortfolioAccessContext.Provider value={{ isValidated, openPortfolioItem }}>
+    <PortfolioAccessContext.Provider value={{ isValidated, openPortfolioItem, requestAccess }}>
       {children}
 
       {PORTFOLIO_ACCESS_VALIDATION_ENABLED && gateOpen && !isValidated && (

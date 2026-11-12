@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { usePortfolioAccess } from '../../context/PortfolioAccessContext'
 import { usePortfolio } from '../../hooks/usePortfolio'
 import { INDIAN_STATES } from '../../data/indianStates'
-import { parseMediaFilter } from '../../lib/portfolioNav'
+import {
+  PORTFOLIO_FILTER_EVENT,
+  portfolioFiltersToUrl,
+  readPortfolioFilters,
+} from '../../lib/portfolioNav'
 import type { PortfolioEntry, PortfolioMediaType } from '../../types/portfolio'
 import { PortfolioCard } from '../ui/PortfolioCard'
 import { SearchableFilterDropdown } from '../ui/SearchableFilterDropdown'
@@ -12,10 +17,12 @@ const CARD_GRID =
   'grid grid-cols-1 min-[560px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-3.5 lg:gap-5'
 
 export function Portfolio() {
-  const [mediaFilter, setMediaFilter] = useState<PortfolioMediaType>(() =>
-    parseMediaFilter(window.location.hash),
-  )
-  const [activeState, setActiveState] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const { pathname, search, hash } = useLocation()
+  // One object, because the URL is the source of truth for both and they have
+  // to move together — a campaign link sets media *and* state in one go.
+  const [filters, setFilters] = useState(() => readPortfolioFilters())
+  const { media: mediaFilter, state: activeState } = filters
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const { openPortfolioItem } = usePortfolioAccess()
 
@@ -37,22 +44,30 @@ export function Portfolio() {
     category: null,
   })
 
+  // URL -> filters. Covers the first paint, Back/Forward, and anything else
+  // that moves the router.
   useEffect(() => {
-    const onHashChange = () => setMediaFilter(parseMediaFilter(window.location.hash))
-    const onFilter = (e: Event) => {
-      setMediaFilter((e as CustomEvent<PortfolioMediaType>).detail)
-    }
-    window.addEventListener('hashchange', onHashChange)
-    window.addEventListener('portfolio-filter', onFilter)
-    return () => {
-      window.removeEventListener('hashchange', onHashChange)
-      window.removeEventListener('portfolio-filter', onFilter)
-    }
-  }, [])
+    setFilters(readPortfolioFilters(pathname, search, hash))
+  }, [pathname, search, hash])
 
   useEffect(() => {
-    setActiveState(null)
-  }, [mediaFilter])
+    // Switching tab keeps the state you're looking at — someone browsing
+    // Bihar videos who taps Virtual Reality Tour wants Bihar tours, not the
+    // whole country. Only the filter box clears it.
+    const onFilter = (e: Event) =>
+      setFilters((prev) => ({ ...prev, media: (e as CustomEvent<PortfolioMediaType>).detail }))
+    window.addEventListener(PORTFOLIO_FILTER_EVENT, onFilter)
+    return () => window.removeEventListener(PORTFOLIO_FILTER_EVENT, onFilter)
+  }, [])
+
+  // filters -> URL, so any view can be copied and handed out as a campaign
+  // link. `replace`, not push: people flick through states while browsing, and
+  // every flick becoming a history entry would turn Back into a filter undo
+  // instead of what it should be — leaving the site.
+  useEffect(() => {
+    const next = portfolioFiltersToUrl(filters, pathname, search, hash)
+    if (next !== `${pathname}${search}${hash}`) navigate(next, { replace: true })
+  }, [filters, pathname, search, hash, navigate])
 
   const stateAssignedCount = useMemo(
     () => Object.values(stateCounts).reduce((sum, count) => sum + count, 0),
@@ -68,17 +83,23 @@ export function Portfolio() {
     [stateCounts],
   )
 
-  const stateOptions = useMemo(
-    () => [
+  const stateOptions = useMemo(() => {
+    const options = [
       { value: '', label: 'All states', count: allStatesCount },
       ...statesWithContent.map((state) => ({
         value: state,
         label: state,
         count: stateCounts[state] ?? 0,
       })),
-    ],
-    [allStatesCount, stateCounts, statesWithContent],
-  )
+    ]
+    // A campaign link can point at a state that has nothing yet. Without an
+    // option to match, the dropdown would read "Select state" while the grid
+    // said the state was empty.
+    if (activeState && !statesWithContent.some((state) => state === activeState)) {
+      options.push({ value: activeState, label: activeState, count: 0 })
+    }
+    return options
+  }, [activeState, allStatesCount, stateCounts, statesWithContent])
 
   const stateSearchEmptyMessage = useCallback(
     (query: string) => {
@@ -163,7 +184,7 @@ export function Portfolio() {
                 placeholder="Select state"
                 searchPlaceholder="Search states…"
                 emptySearchMessage={stateSearchEmptyMessage}
-                onChange={(value) => setActiveState(value || null)}
+                onChange={(value) => setFilters((prev) => ({ ...prev, state: value || null }))}
                 className="w-full max-w-xs"
             />
           </div>

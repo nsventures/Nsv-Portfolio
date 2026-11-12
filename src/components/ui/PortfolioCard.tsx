@@ -4,7 +4,6 @@ import {
   getPortfolioThumbnail,
   PORTFOLIO_THUMB_HEIGHT,
   PORTFOLIO_THUMB_WIDTH,
-  portfolioThumbSrcSet,
 } from '../../lib/portfolioMedia'
 import { useMediaQuery } from '../../hooks/useMotion'
 import type { PortfolioEntry } from '../../types/portfolio'
@@ -83,8 +82,6 @@ export function PortfolioCard({
           >
             <img
               src={thumbnailSrc}
-              srcSet={portfolioThumbSrcSet(thumbnailSrc)}
-              sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 90vw"
               alt=""
               width={PORTFOLIO_THUMB_WIDTH}
               height={PORTFOLIO_THUMB_HEIGHT}

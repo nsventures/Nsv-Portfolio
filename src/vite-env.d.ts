@@ -7,8 +7,6 @@ interface ImportMetaEnv {
   readonly VITE_BULK_IMPORT_API_URL?: string
   /** Set to true on production deploy to block copy, right-click, and devtools shortcuts */
   readonly VITE_IS_PRODUCTION?: string
-  /** Optional override for /admin gate password (default: nsv@1234 when VITE_IS_PRODUCTION is true) */
-  readonly VITE_ADMIN_GATE_PASSWORD?: string
   /** Google reCAPTCHA v3 site key (public). Unused on localhost. */
   readonly VITE_RECAPTCHA_SITE_KEY?: string
   /** Set "true" to disable reCAPTCHA even on non-localhost. */

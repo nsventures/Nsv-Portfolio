@@ -3,7 +3,12 @@ import { animate, motion, useInView, useMotionValue, useTransform } from 'framer
 import { MagneticButton } from '../ui/Motion'
 import { ClientLogoMarquee } from '../ui/ClientLogoMarquee'
 import { CommercialFlipbook } from '../ui/CommercialFlipbook'
-import { scrollToPortfolioFilter, parseMediaFilter } from '../../lib/portfolioNav'
+import { usePortfolioAccess } from '../../context/PortfolioAccessContext'
+import {
+  PORTFOLIO_FILTER_EVENT,
+  readPortfolioFilters,
+  scrollToPortfolioFilter,
+} from '../../lib/portfolioNav'
 import type { PortfolioMediaType } from '../../types/portfolio'
 
 const fadeUp = {
@@ -125,20 +130,23 @@ function HeroStats({ className = '' }: { className?: string }) {
 
 export function Hero() {
   const sectionRef = useRef<HTMLElement>(null)
-  const [activeTab, setActiveTab] = useState<PortfolioMediaType>(() =>
-    parseMediaFilter(window.location.hash),
+  // Highlights whichever CTA matches the filter a campaign link landed on.
+  const [activeTab, setActiveTab] = useState<PortfolioMediaType>(
+    () => readPortfolioFilters().media,
   )
 
   useEffect(() => {
-    const sync = () => setActiveTab(parseMediaFilter(window.location.hash))
+    const sync = () => setActiveTab(readPortfolioFilters().media)
     const onFilter = (e: Event) => {
       setActiveTab((e as CustomEvent<PortfolioMediaType>).detail)
     }
     window.addEventListener('hashchange', sync)
-    window.addEventListener('portfolio-filter', onFilter)
+    window.addEventListener('popstate', sync)
+    window.addEventListener(PORTFOLIO_FILTER_EVENT, onFilter)
     return () => {
       window.removeEventListener('hashchange', sync)
-      window.removeEventListener('portfolio-filter', onFilter)
+      window.removeEventListener('popstate', sync)
+      window.removeEventListener(PORTFOLIO_FILTER_EVENT, onFilter)
     }
   }, [])
 
@@ -151,6 +159,11 @@ export function Hero() {
     scrollToPortfolioFilter('virtual-tour')
   }
   const [commercialOpen, setCommercialOpen] = useState(false)
+  const { requestAccess } = usePortfolioAccess()
+  // Same gate as a portfolio item: the deck is only shown once the visitor
+  // has verified. Already-verified visitors go straight in.
+  const openCommercial = () =>
+    requestAccess(() => setCommercialOpen(true), 'Our Commercial')
 
   return (
     <section
@@ -216,7 +229,7 @@ export function Hero() {
             wave
             className={HERO_BUTTON_WIDE}
             variant="outline"
-            onClick={() => setCommercialOpen(true)}
+            onClick={openCommercial}
             data-cursor="pointer"
           >
             Our Commercial
